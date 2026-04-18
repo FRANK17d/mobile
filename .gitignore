@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Archivos de registro de plugins de escritorio (lo que te está saliendo)
+windows/flutter/generated_plugin_registrant.*
+linux/flutter/generated_plugin_registrant.*
+macos/flutter/GeneratedPluginRegistrant.swift
