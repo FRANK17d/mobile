@@ -47,4 +47,4 @@ app.*.map.json
 # Archivos de registro de plugins de escritorio (lo que te está saliendo)
 windows/flutter/generated_plugin_registrant.*
 linux/flutter/generated_plugin_registrant.*
-macos/flutter/GeneratedPluginRegistrant.swift
+macos/Flutter/GeneratedPluginRegistrant.swift
