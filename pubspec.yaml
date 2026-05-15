@@ -26,6 +26,10 @@ dependencies:
   smooth_page_indicator: ^1.2.0+3
   iconsax_flutter: ^1.0.0+1
   cupertino_icons: ^1.0.8
+  http: ^1.6.0
+  flutter_secure_storage: ^10.0.0
+  url_launcher: ^6.3.2
+  crypto: ^3.0.3
 
   # Adaptive Layout
   flutter_adaptive_scaffold: ^0.3.1

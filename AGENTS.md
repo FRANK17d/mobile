@@ -41,3 +41,41 @@ This project is indexed by GitNexus as **mobile** (898 symbols, 1623 relationshi
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+---
+
+# InsForge Backend — Instrucciones de integración
+
+> Esta app Flutter usa InsForge como BaaS. Para integración Flutter usa el **Kotlin SDK** o la **REST API** — no el TypeScript SDK.
+
+## Qué provee InsForge
+
+- **Database**: PostgreSQL con API PostgREST
+- **Authentication**: Email/password + OAuth (Google, GitHub)
+- **Storage**: Subida/descarga de archivos
+- **AI**: Chat completions e imagen (compatible OpenAI)
+- **Functions**: Serverless functions
+- **Realtime**: WebSocket pub/sub
+
+## Antes de escribir código de integración InsForge
+
+Usa el MCP tool `fetch-sdk-docs` para obtener la documentación actualizada:
+
+```
+fetch-sdk-docs(feature: "auth", language: "kotlin")
+fetch-sdk-docs(feature: "db", language: "kotlin")
+fetch-sdk-docs(feature: "storage", language: "kotlin")
+```
+
+Features disponibles: `db`, `storage`, `functions`, `auth`, `ai`, `realtime`
+
+## Servicios ya implementados (pendientes de conectar al UI)
+
+- `lib/core/network/insforge_client.dart` — cliente HTTP base
+- `lib/core/database/database_service.dart` — operaciones de base de datos
+- `lib/features/auth/services/auth_service.dart` — registro, login, logout
+
+## Cuándo usar SDK vs MCP Tools
+
+**SDK (desde el app Flutter):** auth, CRUD, storage, AI, serverless functions  
+**MCP Tools (infraestructura):** esquema de base de datos, buckets, deploy, metadata del backend
