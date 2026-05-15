@@ -44,7 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Archivos de registro de plugins de escritorio (lo que te está saliendo)
+.claude
+.gitnexus
+CLAUDE.md
+
+# Archivos de registro de plugins de escritorio
 windows/flutter/generated_plugin_registrant.*
 linux/flutter/generated_plugin_registrant.*
 macos/Flutter/GeneratedPluginRegistrant.swift

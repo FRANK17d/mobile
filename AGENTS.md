@@ -1,133 +1,81 @@
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **mobile** (898 symbols, 1623 relationships, 1 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/mobile/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/mobile/clusters` | All functional areas |
+| `gitnexus://repo/mobile/processes` | All execution flows |
+| `gitnexus://repo/mobile/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->
+
 ---
-description: Instructions building apps with MCP
-globs: *
-alwaysApply: true
----
 
-# InsForge SDK Documentation - Overview
+# InsForge Backend — Instrucciones de integración
 
-## What is InsForge?
+> Esta app Flutter usa InsForge como BaaS. Para integración Flutter usa el **Kotlin SDK** o la **REST API** — no el TypeScript SDK.
 
-Backend-as-a-service (BaaS) platform providing:
+## Qué provee InsForge
 
-- **Database**: PostgreSQL with PostgREST API
+- **Database**: PostgreSQL con API PostgREST
 - **Authentication**: Email/password + OAuth (Google, GitHub)
-- **Storage**: File upload/download
-- **AI**: Chat completions and image generation (OpenAI-compatible)
-- **Functions**: Serverless function deployment
-- **Realtime**: WebSocket pub/sub (database + client events)
+- **Storage**: Subida/descarga de archivos
+- **AI**: Chat completions e imagen (compatible OpenAI)
+- **Functions**: Serverless functions
+- **Realtime**: WebSocket pub/sub
 
-## Installation
+## Antes de escribir código de integración InsForge
 
-The following is a step-by-step guide to installing and using the InsForge TypeScript SDK for Web applications. If you are building other types of applications, please refer to:
-- [Swift SDK documentation](/sdks/swift/overview) for iOS, macOS, tvOS, and watchOS applications.
-- [Kotlin SDK documentation](/sdks/kotlin/overview) for Android applications.
-- [REST API documentation](/sdks/rest/overview) for direct HTTP API access.
-
-### 🚨 CRITICAL: Follow these steps in order
-
-### Step 1: Download Template
-
-Use the `download-template` MCP tool to create a new project with your backend URL and anon key pre-configured.
-
-### Step 2: Install SDK
-
-```bash
-npm install @insforge/sdk@latest
-```
-
-### Step 3: Create SDK Client
-
-You must create a client instance using `createClient()` with your base URL and anon key:
-
-```javascript
-import { createClient } from '@insforge/sdk';
-
-const client = createClient({
-  baseUrl: 'https://your-app.region.insforge.app',  // Your InsForge backend URL
-  anonKey: 'your-anon-key-here'       // Get this from backend metadata
-});
+Usa el MCP tool `fetch-sdk-docs` para obtener la documentación actualizada:
 
 ```
+fetch-sdk-docs(feature: "auth", language: "kotlin")
+fetch-sdk-docs(feature: "db", language: "kotlin")
+fetch-sdk-docs(feature: "storage", language: "kotlin")
+```
 
-**API BASE URL**: Your API base URL is `https://your-app.region.insforge.app`.
+Features disponibles: `db`, `storage`, `functions`, `auth`, `ai`, `realtime`
 
-## Getting Detailed Documentation
+## Servicios ya implementados (pendientes de conectar al UI)
 
-### 🚨 CRITICAL: Always Fetch Documentation Before Writing Code
+- `lib/core/network/insforge_client.dart` — cliente HTTP base
+- `lib/core/database/database_service.dart` — operaciones de base de datos
+- `lib/features/auth/services/auth_service.dart` — registro, login, logout
 
-InsForge provides official SDKs and REST APIs, use them to interact with InsForge services from your application code.
+## Cuándo usar SDK vs MCP Tools
 
-- [TypeScript SDK](/sdks/typescript/overview) - JavaScript/TypeScript
-- [Swift SDK](/sdks/swift/overview) - iOS, macOS, tvOS, and watchOS
-- [Kotlin SDK](/sdks/kotlin/overview) - Android and Kotlin Multiplatform
-- [REST API](/sdks/rest/overview) - Direct HTTP API access
-
-Before writing or editing any InsForge integration code, you **MUST** call the `fetch-docs` or `fetch-sdk-docs` MCP tool to get the latest SDK documentation. This ensures you have accurate, up-to-date implementation patterns.
-
-### Use the InsForge `fetch-docs` MCP tool to get specific SDK documentation:
-
-Available documentation types:
-
-- `"instructions"` - Essential backend setup (START HERE)
-- `"real-time"` - Real-time pub/sub (database + client events) via WebSockets
-- `"db-sdk-typescript"` - Database operations with TypeScript SDK
-- **Authentication** - Choose based on implementation:
-  - `"auth-sdk-typescript"` - TypeScript SDK methods for custom auth flows
-  - `"auth-components-react"` - Pre-built auth UI for React+Vite (singlepage App)
-  - `"auth-components-react-router"` - Pre-built auth UI for React(Vite+React Router) (Multipage App)
-  - `"auth-components-nextjs"` - Pre-built auth UI for Nextjs (SSR App)
-- `"storage-sdk"` - File storage operations
-- `"functions-sdk"` - Serverless functions invocation
-- `"ai-integration-sdk"` - AI chat and image generation
-- `"real-time"` - Real-time pub/sub (database + client events) via WebSockets
-- `"deployment"` - Deploy frontend applications via MCP tool
-
-These documentations are mostly for TypeScript SDK. For other languages, you can also use `fetch-sdk-docs` mcp tool to get specific documentation.
-
-### Use the InsForge `fetch-sdk-docs` MCP tool to get specific SDK documentation
-
-You can fetch sdk documentation using the `fetch-sdk-docs` MCP tool with specific feature type and language.
-
-Available feature types:
-- db - Database operations
-- storage - File storage operations
-- functions - Serverless functions invocation
-- auth - User authentication
-- ai - AI chat and image generation
-- realtime - Real-time pub/sub (database + client events) via WebSockets
-
-Available languages:
-- typescript - JavaScript/TypeScript SDK
-- swift - Swift SDK (for iOS, macOS, tvOS, and watchOS)
-- kotlin - Kotlin SDK (for Android and JVM applications)
-- rest-api - REST API
-
-## When to Use SDK vs MCP Tools
-
-### Always SDK for Application Logic:
-
-- Authentication (register, login, logout, profiles)
-- Database CRUD (select, insert, update, delete)
-- Storage operations (upload, download files)
-- AI operations (chat, image generation)
-- Serverless function invocation
-
-### Use MCP Tools for Infrastructure:
-
-- Project scaffolding (`download-template`) - Download starter templates with InsForge integration
-- Backend setup and metadata (`get-backend-metadata`)
-- Database schema management (`run-raw-sql`, `get-table-schema`)
-- Storage bucket creation (`create-bucket`, `list-buckets`, `delete-bucket`)
-- Serverless function deployment (`create-function`, `update-function`, `delete-function`)
-- Frontend deployment (`create-deployment`) - Deploy frontend apps to InsForge hosting
-
-## Important Notes
-
-- For auth: use `auth-sdk` for custom UI, or framework-specific components for pre-built UI
-- SDK returns `{data, error}` structure for all operations
-- Database inserts require array format: `[{...}]`
-- Serverless functions have single endpoint (no subpaths)
-- Storage: Upload files to buckets, store URLs in database
-- AI operations are OpenAI-compatible
-- **EXTRA IMPORTANT**: Use Tailwind CSS 3.4 (do not upgrade to v4). Lock these dependencies in `package.json`
+**SDK (desde el app Flutter):** auth, CRUD, storage, AI, serverless functions  
+**MCP Tools (infraestructura):** esquema de base de datos, buckets, deploy, metadata del backend

@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../network/insforge_client.dart';
 
 class DatabaseService {
@@ -17,11 +17,11 @@ class DatabaseService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;
       } else {
-        print('DB Insert Error: ${response.body}');
+        debugPrint('DB Insert Error: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('Exception during insertRecord: $e');
+      debugPrint('Exception during insertRecord: $e');
       return false;
     }
   }
@@ -38,11 +38,11 @@ class DatabaseService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return true;
       } else {
-        print('DB Update Error: ${response.body}');
+        debugPrint('DB Update Error: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('Exception during updateRecordByColumn: $e');
+      debugPrint('Exception during updateRecordByColumn: $e');
       return false;
     }
   }

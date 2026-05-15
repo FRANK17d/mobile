@@ -1,6 +1,7 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'dart:math';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/insforge_client.dart';
 
@@ -25,15 +26,15 @@ class AuthService {
         final accessToken = data['accessToken'];
         final refreshToken = data['refreshToken'];
         final userId = data['user']['id'];
-        
+
         await _client.saveTokens(accessToken, refreshToken);
         return userId;
       } else {
-        print('Login Error: ${response.body}');
+        debugPrint('Login Error: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Exception during login: $e');
+      debugPrint('Exception during login: $e');
       return null;
     }
   }
@@ -56,17 +57,17 @@ class AuthService {
         final data = jsonDecode(response.body);
         final accessToken = data['accessToken'];
         final refreshToken = data['refreshToken'];
-        
+
         if (accessToken != null) {
-           await _client.saveTokens(accessToken, refreshToken);
+          await _client.saveTokens(accessToken, refreshToken);
         }
         return true;
       } else {
-        print('Register Error: ${response.body}');
+        debugPrint('Register Error: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('Exception during register: $e');
+      debugPrint('Exception during register: $e');
       return false;
     }
   }
@@ -88,17 +89,17 @@ class AuthService {
         final data = jsonDecode(response.body);
         final accessToken = data['accessToken'];
         final refreshToken = data['refreshToken'];
-        
+
         if (accessToken != null) {
-           await _client.saveTokens(accessToken, refreshToken);
+          await _client.saveTokens(accessToken, refreshToken);
         }
         return data['user']['id'];
       } else {
-        print('Verify Error: ${response.body}');
+        debugPrint('Verify Error: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Exception during email verification: $e');
+      debugPrint('Exception during email verification: $e');
       return null;
     }
   }
@@ -113,7 +114,7 @@ class AuthService {
       );
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
-      print('Exception during resend OTP: $e');
+      debugPrint('Exception during resend OTP: $e');
       return false;
     }
   }
@@ -124,7 +125,7 @@ class AuthService {
     final random = Random.secure();
     final values = List<int>.generate(32, (i) => random.nextInt(256));
     final codeVerifier = base64UrlEncode(values).replaceAll('=', '');
-    
+
     final bytes = utf8.encode(codeVerifier);
     final digest = sha256.convert(bytes);
     final codeChallenge = base64UrlEncode(digest.bytes).replaceAll('=', '');
@@ -137,22 +138,22 @@ class AuthService {
 
     try {
       final response = await _client.get(apiUrl, requireAuth: false);
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final authUrl = data['authUrl'];
-        
+
         final url = Uri.parse(authUrl);
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);
         } else {
-          print('Could not launch $url');
+          debugPrint('Could not launch $url');
         }
       } else {
-        print('Error getting Google auth URL: ${response.body}');
+        debugPrint('Error getting Google auth URL: ${response.body}');
       }
     } catch (e) {
-      print('Exception during Google Auth: $e');
+      debugPrint('Exception during Google Auth: $e');
     }
   }
 
@@ -161,7 +162,7 @@ class AuthService {
     try {
       await _client.post('/api/auth/logout');
     } catch (e) {
-      print('Logout API call failed: $e');
+      debugPrint('Logout API call failed: $e');
     } finally {
       // Always clear local tokens
       await _client.clearTokens();

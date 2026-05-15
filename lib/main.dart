@@ -1,22 +1,13 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/login_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'app/app.dart';
 
 void main() {
-  runApp(const MyApp());
-}
+  WidgetsFlutterBinding.ensureInitialized();
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  // Solo portrait — la app usa AdaptiveScaffold para tablets
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'InsForge Auth',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const LoginScreen(),
-    );
-  }
+  runApp(const ProviderScope(child: TokeApp()));
 }
