@@ -4,6 +4,10 @@
 	<dict>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
+		<!-- Desactiva el deep-linking automático de Flutter: `app_links` maneja el
+		     callback OAuth (tokeplus://). Evita que GoRouter intercepte el deep link. -->
+		<key>FlutterDeepLinkingEnabled</key>
+		<false/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
@@ -22,10 +26,25 @@
 		<string>$(FLUTTER_BUILD_NAME)</string>
 		<key>CFBundleSignature</key>
 		<string>????</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>tokeplus.oauth</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>tokeplus</string>
+				</array>
+			</dict>
+		</array>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>Toke+ necesita acceso a la cámara para tomar tu foto de perfil.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Toke+ necesita acceso a tus fotos para seleccionar una foto de perfil.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

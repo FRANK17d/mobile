@@ -9,5 +9,8 @@ void main() {
 
     // Verify the app renders without crashing
     expect(find.byType(MaterialApp), findsOneWidget);
+
+    // Let splash startup async work finish so no timer is left pending.
+    await tester.pump(const Duration(seconds: 3));
   });
 }

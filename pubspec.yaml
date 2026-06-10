@@ -28,11 +28,17 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.6.0
   flutter_secure_storage: ^10.0.0
+  shared_preferences: ^2.5.3
   url_launcher: ^6.3.2
+  app_links: ^6.4.0
   crypto: ^3.0.3
 
   # Adaptive Layout
   flutter_adaptive_scaffold: ^0.3.1
+  image_picker: ^1.2.2
+  share_plus: ^13.1.0
+  screenshot: ^3.0.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -53,5 +59,6 @@ flutter:
     - assets/images/onboarding/
     - assets/images/onboarding/2.0x/
     - assets/images/onboarding/3.0x/
+    - assets/images/how_it_works/
     - assets/icons/
     - assets/animations/

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/responsive/responsive_grid.dart';
+import '../../../core/widgets/navigation/app_menu_sheet.dart';
+import '../../auth/services/auth_service.dart';
+import '../../auth/services/auth_store.dart';
 
 /// Pantalla de perfil del usuario.
 /// Se adapta segun el rol (cliente o tecnico).
@@ -22,12 +27,15 @@ class ProfileScreen extends StatelessWidget {
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => showAppMenuSheet(context),
           ),
         ],
       ),
       body: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom,
+        ),
         child: ContentContainer(
           child: Column(
             children: [
@@ -196,9 +204,7 @@ class ProfileScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Logout
-                  },
+                  onPressed: () => _handleLogout(context),
                   icon: const Icon(Icons.logout_rounded, size: 20),
                   label: const Text('Cerrar sesion'),
                   style: OutlinedButton.styleFrom(
@@ -228,6 +234,14 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Cierra la sesión y vuelve al home como usuario no autenticado.
+  Future<void> _handleLogout(BuildContext context) async {
+    final router = GoRouter.of(context);
+    await AuthService().logout();
+    AuthStore.instance.setUnauthenticated();
+    router.go(AppRoutes.clientHome);
   }
 }
 

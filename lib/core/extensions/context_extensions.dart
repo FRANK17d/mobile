@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/feedback/app_toast.dart';
 
 /// Extensions utiles sobre BuildContext
 extension ContextExtensions on BuildContext {
@@ -22,19 +23,12 @@ extension ContextExtensions on BuildContext {
   NavigatorState get navigator => Navigator.of(this);
   void pop<T>([T? result]) => navigator.pop(result);
 
-  // ─── Snackbar ───
-  void showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(this).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError
-            ? colorScheme.error
-            : colorScheme.inverseSurface,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
+  // ─── Toast (reemplaza SnackBar generico) ───
+  void showToast(String message, {bool isError = false}) {
+    showAppToast(
+      this,
+      message: message,
+      type: isError ? ToastType.error : ToastType.info,
     );
   }
 }
