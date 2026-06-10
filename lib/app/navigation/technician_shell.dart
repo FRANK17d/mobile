@@ -4,6 +4,7 @@ import '../../core/responsive/adaptive_scaffold.dart';
 import '../../features/technician/home/screens/tech_dashboard_screen.dart';
 import '../../features/technician/requests/screens/tech_requests_screen.dart';
 import '../../features/technician/jobs/screens/tech_jobs_screen.dart';
+import '../../features/profile/screens/profile_screen.dart';
 
 /// Shell de navegacion del Tecnico.
 /// En movil: BottomNavigationBar con 5 tabs.
@@ -51,7 +52,7 @@ class _TechnicianShellState extends State<TechnicianShell> {
     TechRequestsScreen(),
     TechJobsScreen(),
     _TechChatPlaceholder(),
-    _TechProfilePlaceholder(),
+    ProfileScreen(),
   ];
 
   @override
@@ -80,19 +81,6 @@ class _TechChatPlaceholder extends StatelessWidget {
       icon: Icons.chat_bubble_rounded,
       title: 'Mensajes',
       subtitle: 'Chatea con tus clientes',
-    );
-  }
-}
-
-class _TechProfilePlaceholder extends StatelessWidget {
-  const _TechProfilePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _TechTabPlaceholder(
-      icon: Icons.person_rounded,
-      title: 'Perfil',
-      subtitle: 'Tu informacion, portafolio y configuracion',
     );
   }
 }

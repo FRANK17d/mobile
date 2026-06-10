@@ -11,6 +11,8 @@ class TokeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
+
     return MaterialApp.router(
       title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
@@ -20,7 +22,7 @@ class TokeApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.light, // TODO: Hacer configurable por el usuario
       // Router
-      routerConfig: appRouter,
+      routerConfig: router,
     );
   }
 }

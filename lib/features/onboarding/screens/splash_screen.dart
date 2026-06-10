@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_images.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 
-/// Splash Flutter mínimo.
-///
-/// El splash visual lo maneja Android/iOS de forma nativa. Esta pantalla solo
-/// mantiene continuidad visual mientras Flutter entrega el primer frame.
-class SplashScreen extends StatefulWidget {
+/// Splash Flutter.
+/// Mantiene la continuidad visual mientras Flutter inicia y comprueba la sesión persistente.
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
     _setSystemUI();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _goToNextRoute());
   }
 
   void _setSystemUI() {
@@ -36,15 +35,27 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
-  void _goToNextRoute() {
-    if (!mounted) return;
-
-    // TODO: Verificar si es primera vez o si ya está autenticado.
-    context.go(AppRoutes.onboarding);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
+    // Redirección una vez termine la inicialización
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!authState.isInitializing && mounted) {
+        if (authState.status == AuthStatus.authenticated) {
+          if (authState.viewMode == AppViewMode.technician) {
+            context.go(AppRoutes.techHome);
+          } else {
+            context.go(AppRoutes.clientHome);
+          }
+        } else if (authState.hasCompletedOnboarding) {
+          context.go(AppRoutes.login);
+        } else {
+          context.go(AppRoutes.onboarding);
+        }
+      }
+    });
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: Center(

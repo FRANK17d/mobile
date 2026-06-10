@@ -9,6 +9,8 @@ abstract final class AppRoutes {
   static const String register = '/register';
   static const String otp = '/otp';
   static const String roleSelection = '/role-selection';
+  static const String becomeTechnician = '/become-technician';
+  static const String oauthCallback = '/callback';
 
   // ─── Client ───
   static const String clientHome = '/client';
