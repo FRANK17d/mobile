@@ -1,318 +1,242 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/constants/app_images.dart';
 import '../../../core/constants/app_routes.dart';
-import '../providers/auth_provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/feedback/app_toast.dart';
+import 'forgot_password_screen.dart';
+import '../services/auth_service.dart';
+import '../services/auth_store.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
+/// Pantalla de inicio de sesion.
+/// Header oscuro con logo toke+ animado,
+/// formulario con correo electronico y contraseña, boton "Ingresar".
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
+class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
+  bool _isLoggingIn = false;
+
+  // Errores de validación inline (null = sin error). Pintan el borde rojo y un
+  // mensaje accesible bajo cada campo.
+  String? _emailError;
+  String? _passwordError;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  String? _validateEmail(String value) {
+    final email = value.trim();
+    if (email.isEmpty) return 'Ingresá tu correo electrónico';
+    final emailRegex = RegExp(r'^[\w.\-+]+@([\w\-]+\.)+[\w\-]{2,}$');
+    if (!emailRegex.hasMatch(email)) return 'Ingresá un correo válido';
+    return null;
+  }
 
-    final success = await ref.read(authProvider.notifier).login(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-
-    if (success && mounted) {
-      context.go(AppRoutes.clientHome);
+  String? _validatePassword(String value) {
+    if (value.isEmpty) return 'Ingresá tu contraseña';
+    if (value.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
     }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final isLoading = authState.status == AuthStatus.authenticating;
+    final topPadding = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primarySurface,
-              Colors.white,
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              SliverFillRemaining(
-                hasScrollBody: false, // Permite que Spacer() funcione dentro del Column
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28.0),
-                  child: Form(
-                    key: _formKey,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: const Color(0xFF1D2939),
+          body: Column(
+            children: [
+              // ── Header oscuro con logo animado ──
+              _HeaderSection(topPadding: topPadding),
+
+              // ── Formulario blanco con bordes redondeados ──
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 40),
+                        // ── Correo electrónico ──
+                        Text(
+                          'Correo electrónico',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _EmailField(
+                          controller: _emailController,
+                          focusNode: _emailFocus,
+                          errorText: _emailError,
+                          onChanged: (_) {
+                            if (_emailError != null) {
+                              setState(() => _emailError = null);
+                            }
+                          },
+                          onSubmitted: (_) => _passwordFocus.requestFocus(),
+                        ),
 
-                        // Logo & Brand Header
+                        const SizedBox(height: 24),
+
+                        // ── Contraseña ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Contraseña',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Semantics(
+                              label: 'Olvidé mi contraseña',
+                              button: true,
+                              child: GestureDetector(
+                                onTap: () => _showForgotPasswordModal(context),
+                                child: Text(
+                                  'Olvidé mi contraseña',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        _PasswordField(
+                          controller: _passwordController,
+                          focusNode: _passwordFocus,
+                          obscure: _obscurePassword,
+                          errorText: _passwordError,
+                          onChanged: (_) {
+                            if (_passwordError != null) {
+                              setState(() => _passwordError = null);
+                            }
+                          },
+                          onSubmitted: (_) => _handleLogin(),
+                          onToggle: () {
+                            setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 36),
+
+                        // ── Boton Ingresar ──
+                        _LoginButton(
+                          onTap: _isLoggingIn ? null : _handleLogin,
+                          isLoading: _isLoggingIn,
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Separador "o" ──
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Divider(color: AppColors.neutral300),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'o',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.neutral500,
+                                ),
+                              ),
+                            ),
+                            const Expanded(
+                              child: Divider(color: AppColors.neutral300),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Boton Google ──
+                        _GoogleSignInButton(onTap: _handleGoogleLogin),
+
+                        const SizedBox(height: 28),
+
+                        // ── Divider ──
+                        Container(height: 1, color: AppColors.neutral200),
+
+                        const SizedBox(height: 24),
+
+                        // ── Registrate ──
                         Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.3),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 8),
+                          child: Semantics(
+                            label: '¿No tenés una cuenta? Registrate',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () {
+                                context.push(AppRoutes.register);
+                              },
+                              child: RichText(
+                                text: TextSpan(
+                                  text: '¿No tenés una cuenta? ',
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Registrate',
+                                      style: AppTypography.bodyMedium.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: AppColors.primary,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: const Center(
-                                  child: Text(
-                                    'tk+',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              )
-                                  .animate()
-                                  .scale(duration: 400.ms, curve: Curves.easeOutBack),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Toke+',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primary,
-                                ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Servicios al instante en tu hogar',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-
-                        const Spacer(),
-
-                        Text(
-                          'Iniciar Sesión',
-                          style: GoogleFonts.nunito(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.neutral900,
-                          ),
-                        ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1, end: 0),
-                        const SizedBox(height: AppSpacing.md),
-
-                        // Email Field
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          enabled: !isLoading,
-                          decoration: InputDecoration(
-                            labelText: 'Correo Electrónico',
-                            hintText: 'ejemplo@correo.com',
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Por favor ingresa tu correo';
-                            }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Ingresa un correo electrónico válido';
-                            }
-                            return null;
-                          },
-                        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
-                        const SizedBox(height: AppSpacing.md),
-
-                        // Password Field
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          textInputAction: TextInputAction.done,
-                          enabled: !isLoading,
-                          onFieldSubmitted: (_) => _submit(),
-                          decoration: InputDecoration(
-                            labelText: 'Contraseña',
-                            prefixIcon: const Icon(Icons.lock_outlined),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                              ),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Por favor ingresa tu contraseña';
-                            }
-                            if (value.length < 6) {
-                              return 'La contraseña debe tener al menos 6 caracteres';
-                            }
-                            return null;
-                          },
-                        ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1, end: 0),
-
-                        // Error Message
-                        if (authState.errorMessage != null) ...[
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            authState.errorMessage!,
-                            style: const TextStyle(color: AppColors.error, fontSize: 13),
-                            textAlign: TextAlign.center,
-                          ).animate().shake(),
-                        ],
-
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Submit Button
-                        ElevatedButton(
-                          onPressed: isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, AppSpacing.buttonHeight),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : Text(
-                                  'Ingresar',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ).animate().fadeIn(delay: 300.ms).scaleY(begin: 0.9, end: 1),
-
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Google Login Option
-                        Row(
-                          children: [
-                            const Expanded(child: Divider(color: AppColors.border)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'o ingresa con',
-                                style: AppTypography.caption.copyWith(color: AppColors.textTertiary),
-                              ),
-                            ),
-                            const Expanded(child: Divider(color: AppColors.border)),
-                          ],
-                        ).animate().fadeIn(delay: 350.ms),
-
-                        const SizedBox(height: AppSpacing.md),
-
-                        OutlinedButton.icon(
-                          onPressed: isLoading
-                              ? null
-                              : () {
-                                  ref.read(authProvider.notifier).loginWithGoogle();
-                                },
-                          icon: Image.network(
-                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png',
-                            height: 20,
-                            width: 20,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, size: 20),
-                          ),
-                          label: Text(
-                            'Google',
-                            style: GoogleFonts.nunito(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.neutral800,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, AppSpacing.buttonHeight),
-                            side: const BorderSide(color: AppColors.border),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                          ),
-                        ).animate().fadeIn(delay: 400.ms),
-
-                        const Spacer(),
-
-                        // Register Link
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '¿No tienes cuenta? ',
-                              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                            ),
-                            GestureDetector(
-                              onTap: () => context.push(AppRoutes.register),
-                              child: Text(
-                                'Regístrate aquí',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -324,4 +248,542 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    // Validación inline: borde rojo + mensaje bajo el campo. Enfocamos el
+    // primer campo con error para facilitar la corrección.
+    final emailError = _validateEmail(email);
+    final passwordError = _validatePassword(password);
+    setState(() {
+      _emailError = emailError;
+      _passwordError = passwordError;
+    });
+    if (emailError != null) {
+      _emailFocus.requestFocus();
+      return;
+    }
+    if (passwordError != null) {
+      _passwordFocus.requestFocus();
+      return;
+    }
+
+    setState(() => _isLoggingIn = true);
+
+    final authService = AuthService();
+    final userId = await authService.login(email, password);
+
+    if (!mounted) return;
+
+    if (userId == null) {
+      setState(() {
+        _isLoggingIn = false;
+        _passwordError = 'Correo o contraseña incorrectos';
+      });
+      showAppToast(
+        context,
+        message: 'Correo o contraseña incorrectos',
+        type: ToastType.error,
+      );
+      return;
+    }
+
+    final profile = await authService.getMyTechnicianProfile();
+
+    if (!mounted) return;
+
+    setState(() => _isLoggingIn = false);
+
+    // Persistimos la sesión en memoria para que el home no re-chequee por red.
+    AuthStore.instance.setAuthenticated(profile);
+
+    if (profile != null && profile['role'] == 'technician') {
+      context.go(AppRoutes.techHome);
+    } else {
+      context.go(AppRoutes.clientHome);
+    }
+  }
+
+  void _showForgotPasswordModal(BuildContext context) {
+    showForgotPasswordModal(context);
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    final launched = await AuthService().loginWithGoogle();
+
+    if (!mounted) return;
+
+    if (!launched) {
+      showAppToast(
+        context,
+        message: 'No se pudo abrir Google. Inténtalo de nuevo.',
+        type: ToastType.error,
+      );
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Header con logo toke+ animado
+// ─────────────────────────────────────────────────────────
+class _HeaderSection extends StatelessWidget {
+  const _HeaderSection({required this.topPadding});
+
+  final double topPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(top: topPadding),
+      child: Column(
+        children: [
+          // ── AppBar: flecha atras + titulo ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              children: [
+                Semantics(
+                  label: 'Volver',
+                  button: true,
+                  child: IconButton(
+                    onPressed: () {
+                      // Login se alcanza con context.go() (es la raíz, sin pila
+                      // debajo). Un Navigator.pop() vaciaría el Navigator y dejaría
+                      // la pantalla en negro. Si no hay nada que desapilar, salimos
+                      // de la app limpiamente.
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        SystemNavigator.pop();
+                      }
+                    },
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Iniciar sesión',
+                  style: AppTypography.headingSmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Logo SVG toke+ animado ──
+          const SizedBox(height: 24),
+          _AnimatedLogo(),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Logo animado con shimmer
+// ─────────────────────────────────────────────────────────
+class _AnimatedLogo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+          AppImages.logoTextSvg,
+          height: 64,
+          colorFilter: const ColorFilter.mode(
+            AppColors.primary,
+            BlendMode.srcIn,
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .fadeIn(duration: 800.ms, curve: Curves.easeOut)
+        .slideX(begin: -0.05, end: 0, duration: 800.ms)
+        .then(delay: 2000.ms)
+        .shimmer(duration: 1200.ms, color: Colors.white.withValues(alpha: 0.3));
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Campo de email
+// ─────────────────────────────────────────────────────────
+class _EmailField extends StatelessWidget {
+  const _EmailField({
+    required this.controller,
+    this.focusNode,
+    this.errorText,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final FocusNode? focusNode;
+  final String? errorText;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = errorText != null;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      borderSide: BorderSide(
+        color: hasError ? AppColors.error : AppColors.neutral300,
+        width: hasError ? 1.5 : 1,
+      ),
+    );
+
+    return _FieldShell(
+      errorText: errorText,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.next,
+        autofillHints: const [AutofillHints.username, AutofillHints.email],
+        autocorrect: false,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: AppTypography.bodyMedium,
+        decoration: InputDecoration(
+          hintText: 'tu@email.com',
+          hintStyle: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textTertiary,
+          ),
+          prefixIcon: const Icon(
+            Icons.email_outlined,
+            color: AppColors.neutral500,
+            size: 20,
+          ),
+          filled: true,
+          fillColor: AppColors.neutral100,
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Contenedor de campo: borde (rojo si hay error) + mensaje de error accesible
+// ─────────────────────────────────────────────────────────
+class _FieldShell extends StatelessWidget {
+  const _FieldShell({required this.child, this.errorText});
+
+  final Widget child;
+  final String? errorText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        child,
+        if (errorText != null) ...[
+          const SizedBox(height: 6),
+          Semantics(
+            liveRegion: true,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.error,
+                  size: 15,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    errorText!,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Campo de contraseña
+// ─────────────────────────────────────────────────────────
+class _PasswordField extends StatelessWidget {
+  const _PasswordField({
+    required this.controller,
+    required this.obscure,
+    required this.onToggle,
+    this.focusNode,
+    this.errorText,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
+  final FocusNode? focusNode;
+  final String? errorText;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = errorText != null;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      borderSide: BorderSide(
+        color: hasError ? AppColors.error : AppColors.neutral300,
+        width: hasError ? 1.5 : 1,
+      ),
+    );
+
+    return _FieldShell(
+      errorText: errorText,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: obscure,
+        textInputAction: TextInputAction.done,
+        autofillHints: const [AutofillHints.password],
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: AppTypography.bodyMedium,
+        decoration: InputDecoration(
+          hintText: '••••••••',
+          hintStyle: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textTertiary,
+          ),
+          prefixIcon: const Icon(
+            Icons.lock_outline_rounded,
+            color: AppColors.neutral500,
+            size: 20,
+          ),
+          suffixIcon: Semantics(
+            label: obscure ? 'Mostrar contraseña' : 'Ocultar contraseña',
+            button: true,
+            child: IconButton(
+              onPressed: onToggle,
+              tooltip: obscure ? 'Mostrar contraseña' : 'Ocultar contraseña',
+              icon: Icon(
+                obscure
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: AppColors.neutral500,
+                size: 20,
+              ),
+            ),
+          ),
+          filled: true,
+          fillColor: AppColors.neutral100,
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Boton "Ingresar" con gradient rojo suave y CurlDecor
+// ─────────────────────────────────────────────────────────
+class _LoginButton extends StatelessWidget {
+  const _LoginButton({required this.onTap, required this.isLoading});
+
+  final VoidCallback? onTap;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Ingresar',
+      button: true,
+      enabled: onTap != null,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFEE7070), Color(0xFFE85555)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFEE7070).withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // ── Decoraciones curvas en esquinas ──
+              const Positioned(
+                left: 16,
+                top: 14,
+                child: _CurlDecor(isLeft: true),
+              ),
+              const Positioned(
+                right: 16,
+                bottom: 14,
+                child: _CurlDecor(isLeft: false),
+              ),
+              // ── Texto central ──
+              Center(
+                child: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        'Ingresar',
+                        style: AppTypography.buttonLarge.copyWith(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Boton "Iniciar sesion con Google"
+// ─────────────────────────────────────────────────────────
+class _GoogleSignInButton extends StatelessWidget {
+  const _GoogleSignInButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Iniciar sesión con Google',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppColors.neutral300),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ── Icono de Google oficial (SVG) ──
+              SvgPicture.asset(
+                'assets/icons/google_g.svg',
+                width: 22,
+                height: 22,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Iniciar sesión con Google',
+                style: AppTypography.buttonLarge.copyWith(
+                  color: AppColors.neutral800,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Decoraciones tipo curl en los bordes del boton
+// ─────────────────────────────────────────────────────────
+class _CurlDecor extends StatelessWidget {
+  const _CurlDecor({required this.isLeft});
+
+  final bool isLeft;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(24, 24),
+      painter: _CurlPainter(isLeft: isLeft),
+    );
+  }
+}
+
+class _CurlPainter extends CustomPainter {
+  const _CurlPainter({required this.isLeft});
+
+  final bool isLeft;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    if (isLeft) {
+      path.moveTo(size.width * 0.7, 0);
+      path.quadraticBezierTo(
+        0,
+        size.height * 0.3,
+        size.width * 0.2,
+        size.height,
+      );
+    } else {
+      path.moveTo(size.width * 0.3, 0);
+      path.quadraticBezierTo(
+        size.width,
+        size.height * 0.7,
+        size.width * 0.8,
+        size.height,
+      );
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurlPainter oldDelegate) =>
+      isLeft != oldDelegate.isLeft;
 }

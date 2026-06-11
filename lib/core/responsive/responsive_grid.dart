@@ -76,24 +76,18 @@ class ContentContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final breakpoint = Breakpoint.of(context);
     final effectiveMaxWidth = maxWidth ?? breakpoint.maxContentWidth;
-    final effectivePadding = padding ??
-        EdgeInsets.symmetric(horizontal: breakpoint.screenPadding);
+    final effectivePadding =
+        padding ?? EdgeInsets.symmetric(horizontal: breakpoint.screenPadding);
 
     if (effectiveMaxWidth == null) {
-      return Padding(
-        padding: effectivePadding,
-        child: child,
-      );
+      return Padding(padding: effectivePadding, child: child);
     }
 
     return Align(
       alignment: alignment,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: effectiveMaxWidth),
-        child: Padding(
-          padding: effectivePadding,
-          child: child,
-        ),
+        child: Padding(padding: effectivePadding, child: child),
       ),
     );
   }

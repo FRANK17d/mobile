@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'breakpoints.dart';
+import '../widgets/navigation/custom_bottom_nav_bar.dart';
 
 /// Scaffold adaptivo que cambia entre BottomNavigationBar (movil)
 /// y NavigationRail (tablet) automaticamente.
 class AdaptiveScaffold extends StatelessWidget {
   const AdaptiveScaffold({
     super.key,
-    required this.destinations,
+    required this.items,
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.body,
@@ -14,8 +15,8 @@ class AdaptiveScaffold extends StatelessWidget {
     this.appBar,
   });
 
-  /// Lista de destinos de navegacion
-  final List<NavigationDestination> destinations;
+  /// Lista de items de navegacion
+  final List<NavBarItem> items;
 
   /// Indice seleccionado actual
   final int selectedIndex;
@@ -43,16 +44,33 @@ class AdaptiveScaffold extends StatelessWidget {
   }
 
   Widget _buildMobileLayout(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    const navBarHeight = 102.0; // nav bar alto + margen
+
     return Scaffold(
       appBar: appBar,
-      body: body,
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: onDestinationSelected,
-        destinations: destinations,
-        height: 64,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      body: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          padding: MediaQuery.of(
+            context,
+          ).padding.copyWith(bottom: bottomPadding + navBarHeight),
+        ),
+        child: Stack(
+          children: [
+            body,
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: CustomBottomNavBar(
+                items: items,
+                currentIndex: selectedIndex,
+                onTap: onDestinationSelected,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -81,12 +99,12 @@ class AdaptiveScaffold extends StatelessWidget {
                     ),
                   )
                 : const SizedBox(height: 8),
-            destinations: destinations
+            destinations: items
                 .map(
-                  (d) => NavigationRailDestination(
-                    icon: d.icon,
-                    selectedIcon: d.selectedIcon,
-                    label: Text(d.label),
+                  (item) => NavigationRailDestination(
+                    icon: Icon(item.icon),
+                    selectedIcon: Icon(item.activeIcon),
+                    label: Text(item.label),
                   ),
                 )
                 .toList(),

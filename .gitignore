@@ -52,3 +52,11 @@ CLAUDE.md
 windows/flutter/generated_plugin_registrant.*
 linux/flutter/generated_plugin_registrant.*
 macos/Flutter/GeneratedPluginRegistrant.swift
+
+skills-lock.json
+.agents
+
+.flutter-plugins
+.flutter-plugins-dependencies
+.dart_tool/
+build/

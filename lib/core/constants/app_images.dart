@@ -8,9 +8,21 @@
 abstract final class AppImages {
   static const String _basePath = 'assets/images';
   static const String _onboardingPath = 'assets/images/onboarding';
+  static const String _iconsPath = 'assets/icons';
 
   // ─── Logo ───
   static const String logo = '$_basePath/toke_logo.webp';
+  static const String logoTextSvg = '$_iconsPath/toke_logo_text.svg';
+
+  // ─── Mascota ───
+  static const String mascot = '$_iconsPath/mascot.svg';
+
+  // ─── Moneda / créditos ───
+  static const String tokeCoin = '$_basePath/moneda-toke.webp';
+  static const String coinPackSmall = '$_basePath/moneda1.webp';
+  static const String coinPackMedium = '$_basePath/moneda2.webp';
+  static const String coinPackLarge = '$_basePath/moneda3.webp';
+  static const String walletCredits = '$_basePath/billetera.webp';
 
   // ─── Onboarding (5 paginas) ───
   static const String onboarding1 = '$_onboardingPath/onboarding_1.webp';
@@ -18,6 +30,18 @@ abstract final class AppImages {
   static const String onboarding3 = '$_onboardingPath/onboarding_3.webp';
   static const String onboarding4 = '$_onboardingPath/onboarding_4.webp';
   static const String onboarding5 = '$_onboardingPath/onboarding_5.webp';
+
+  // ─── Cómo funciona (pantalla "¿Cómo funciona Toke+?") ───
+  // TODO: Reemplazar por las imágenes reales (las de las capturas adjuntas).
+  //       Hasta entonces se muestra un placeholder automático.
+  static const String _howItWorksPath = '$_basePath/how_it_works';
+  static const String hiwStep1 = '$_howItWorksPath/paso_1.webp';
+  static const String hiwStep2 = '$_howItWorksPath/paso_2.webp';
+  static const String hiwStep3 = '$_howItWorksPath/paso_3.webp';
+  static const String hiwTrust = '$_howItWorksPath/buscar_soluciones.webp';
+  static const String hiwOrderBasic = '$_howItWorksPath/pedido_basico.webp';
+  static const String hiwOrderExclusive =
+      '$_howItWorksPath/pedido_exclusivo.webp';
 
   // ─── Placeholders ───
   // TODO: Agregar estos assets cuando se necesiten

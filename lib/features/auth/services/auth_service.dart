@@ -2,15 +2,94 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/insforge_client.dart';
-import '../../../core/models/user_profile.dart';
-import '../../../core/models/technician_profile.dart';
+
+/// Modelo de datos para el registro de técnico
+class TechnicianRegistrationData {
+  final String firstName;
+  final String lastName;
+  final String dni;
+  final String district;
+  final String bio;
+  final String phone;
+  final String email;
+  final String password;
+  final String? avatarUrl;
+  final List<String> categories;
+
+  const TechnicianRegistrationData({
+    required this.firstName,
+    required this.lastName,
+    required this.dni,
+    required this.district,
+    required this.bio,
+    required this.phone,
+    required this.email,
+    required this.password,
+    this.avatarUrl,
+    required this.categories,
+  });
+}
+
+/// Resultado del registro de técnico
+class TechnicianRegistrationResult {
+  final bool success;
+  final String? userId;
+  final String? verificationStatus;
+  final String? error;
+  final String message;
+
+  const TechnicianRegistrationResult({
+    required this.success,
+    this.userId,
+    this.verificationStatus,
+    this.error,
+    required this.message,
+  });
+}
+
+/// Modelo de datos para el registro de cliente.
+class ClientRegistrationData {
+  final String firstName;
+  final String lastName;
+  final String district;
+  final String phone;
+  final String email;
+  final String password;
+
+  const ClientRegistrationData({
+    required this.firstName,
+    required this.lastName,
+    required this.district,
+    required this.phone,
+    required this.email,
+    required this.password,
+  });
+}
+
+/// Resultado del registro/perfil de cliente.
+class ClientRegistrationResult {
+  final bool success;
+  final String? userId;
+  final String? error;
+  final String message;
+
+  const ClientRegistrationResult({
+    required this.success,
+    this.userId,
+    this.error,
+    required this.message,
+  });
+}
 
 class AuthService {
+  static const googleOAuthRedirectUri = 'tokeplus://auth/callback';
+  static const _googleCodeVerifierKey = 'google_oauth_code_verifier';
+
   final InsForgeClient _client = InsForgeClient();
-  final _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _oauthStorage = const FlutterSecureStorage();
 
   /// Logs in a user with email and password
   /// Returns the userId on success, or null on failure.
@@ -18,21 +97,22 @@ class AuthService {
     try {
       final response = await _client.post(
         '/api/auth/sessions?client_type=mobile',
-        body: {
-          'email': email,
-          'password': password,
-        },
+        body: {'email': email, 'password': password},
         requireAuth: false, // Use anon key
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        final accessToken = data['accessToken'];
-        final refreshToken = data['refreshToken'];
-        final userId = data['user']['id'];
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final accessToken = data['accessToken'] as String?;
+        final refreshToken = data['refreshToken'] as String?;
+        final user = data['user'] as Map<String, dynamic>?;
+        final userId = user?['id'] as String?;
 
-        await _client.saveTokens(accessToken, refreshToken);
-        return userId;
+        if (accessToken != null && userId != null) {
+          await _client.saveTokens(accessToken, refreshToken);
+          return userId;
+        }
+        return null;
       } else {
         debugPrint('Login Error: ${response.body}');
         return null;
@@ -45,15 +125,15 @@ class AuthService {
 
   /// Registers a new user. Assigns role "usuario" natively in DB via trigger or manual insert if needed.
   /// The InsForge API assigns default role 'client', we can pass name if supported.
-  Future<bool> register(String email, String password, {String name = 'Usuario'}) async {
+  Future<bool> register(
+    String email,
+    String password, {
+    String name = 'Usuario',
+  }) async {
     try {
       final response = await _client.post(
         '/api/auth/users?client_type=mobile',
-        body: {
-          'email': email,
-          'password': password,
-          'name': name,
-        },
+        body: {'email': email, 'password': password, 'name': name},
         requireAuth: false, // Use anon key
       );
 
@@ -76,28 +156,113 @@ class AuthService {
     }
   }
 
+  /// Completa el perfil app del cliente después de verificar email.
+  Future<ClientRegistrationResult> completeClientProfile({
+    required String userId,
+    required ClientRegistrationData data,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/create_client_profile',
+        body: {
+          'p_user_id': userId,
+          'p_first_name': data.firstName,
+          'p_last_name': data.lastName,
+          'p_district_name': data.district,
+          'p_phone': data.phone,
+          'p_email': data.email,
+        },
+        requireAuth: true,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final result = jsonDecode(response.body);
+        if (result['success'] == true) {
+          return ClientRegistrationResult(
+            success: true,
+            userId: result['user_id'] ?? userId,
+            message: result['message'] ?? 'Registro completado.',
+          );
+        }
+
+        return ClientRegistrationResult(
+          success: false,
+          error: result['error'],
+          message: result['message'] ?? 'Error al completar el perfil.',
+        );
+      }
+
+      debugPrint('Client profile RPC Error: ${response.body}');
+      return ClientRegistrationResult(
+        success: false,
+        error: 'rpc_failed',
+        message:
+            'Error al guardar los datos del cliente (${response.statusCode}).',
+      );
+    } catch (e) {
+      debugPrint('Exception completing client profile: $e');
+      return const ClientRegistrationResult(
+        success: false,
+        error: 'network',
+        message: 'Error de conexión al guardar el perfil.',
+      );
+    }
+  }
+
+  /// Asegura que un usuario OAuth tenga perfil app como cliente.
+  Future<bool> ensureClientProfile({
+    required String userId,
+    String? email,
+    String? displayName,
+  }) async {
+    final currentProfile = await getMyTechnicianProfile();
+    final currentRole = currentProfile?['role'];
+
+    if (currentRole == 'technician' || currentRole == 'admin') {
+      return true;
+    }
+
+    final nameParts = (displayName ?? '').trim().split(RegExp(r'\s+'));
+    final firstName = nameParts.isNotEmpty && nameParts.first.isNotEmpty
+        ? nameParts.first
+        : 'Cliente';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+    final result = await completeClientProfile(
+      userId: userId,
+      data: ClientRegistrationData(
+        firstName: firstName,
+        lastName: lastName,
+        district: 'Trujillo',
+        phone: '',
+        email: email ?? '',
+        password: '',
+      ),
+    );
+
+    return result.success;
+  }
+
   /// Verifies the user's email with the OTP code sent
   /// Returns the userId on success, or null on failure.
   Future<String?> verifyEmail(String email, String otp) async {
     try {
       final response = await _client.post(
         '/api/auth/email/verify?client_type=mobile',
-        body: {
-          'email': email,
-          'otp': otp,
-        },
+        body: {'email': email, 'otp': otp},
         requireAuth: false,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        final accessToken = data['accessToken'];
-        final refreshToken = data['refreshToken'];
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final accessToken = data['accessToken'] as String?;
+        final refreshToken = data['refreshToken'] as String?;
+        final user = data['user'] as Map<String, dynamic>?;
 
         if (accessToken != null) {
           await _client.saveTokens(accessToken, refreshToken);
         }
-        return data['user']['id'];
+        return user?['id'] as String?;
       } else {
         debugPrint('Verify Error: ${response.body}');
         return null;
@@ -123,8 +288,66 @@ class AuthService {
     }
   }
 
-  /// Initiates Google OAuth flow
-  Future<void> loginWithGoogle() async {
+  /// Solicita el código de recuperación de contraseña por email.
+  Future<bool> sendPasswordResetCode(String email) async {
+    try {
+      final response = await _client.post(
+        '/api/auth/email/send-reset-password',
+        body: {'email': email},
+        requireAuth: false,
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Exception sending password reset code: $e');
+      return false;
+    }
+  }
+
+  /// Intercambia el código OTP de recuperación por un token de reset.
+  Future<String?> exchangePasswordResetCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/api/auth/email/exchange-reset-password-token',
+        body: {'email': email, 'code': code},
+        requireAuth: false,
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('Password reset code exchange error: ${response.body}');
+        return null;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['token'] as String?;
+    } catch (e) {
+      debugPrint('Exception exchanging password reset code: $e');
+      return null;
+    }
+  }
+
+  /// Actualiza la contraseña usando el token obtenido desde el OTP.
+  Future<bool> resetPassword({
+    required String resetToken,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/api/auth/email/reset-password',
+        body: {'otp': resetToken, 'newPassword': newPassword},
+        requireAuth: false,
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Exception resetting password: $e');
+      return false;
+    }
+  }
+
+  /// Initiates Google OAuth flow. The callback is handled by TokeApp deep links.
+  Future<bool> loginWithGoogle() async {
     // 1. Generate PKCE code verifier and challenge
     final random = Random.secure();
     final values = List<int>.generate(32, (i) => random.nextInt(256));
@@ -134,11 +357,11 @@ class AuthService {
     final digest = sha256.convert(bytes);
     final codeChallenge = base64UrlEncode(digest.bytes).replaceAll('=', '');
 
-    // Store codeVerifier in secure storage so we can use it in the callback
-    await _storage.write(key: 'google_oauth_code_verifier', value: codeVerifier);
+    await _oauthStorage.write(key: _googleCodeVerifierKey, value: codeVerifier);
 
-    final redirectUri = 'tokeplus://callback'; // You will need to configure Deep Links in your app
-    final apiUrl = '/api/auth/oauth/google?redirect_uri=$redirectUri&code_challenge=$codeChallenge';
+    final redirectUri = Uri.encodeComponent(googleOAuthRedirectUri);
+    final apiUrl =
+        '/api/auth/oauth/google?redirect_uri=$redirectUri&code_challenge=$codeChallenge';
 
     try {
       final response = await _client.get(apiUrl, requireAuth: false);
@@ -148,99 +371,192 @@ class AuthService {
         final authUrl = data['authUrl'];
 
         final url = Uri.parse(authUrl);
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-        } else {
-          debugPrint('Could not launch $url');
+        if (await launchUrl(url, mode: LaunchMode.externalApplication)) {
+          return true;
         }
+
+        debugPrint('Could not launch $url');
       } else {
         debugPrint('Error getting Google auth URL: ${response.body}');
       }
     } catch (e) {
       debugPrint('Exception during Google Auth: $e');
     }
+
+    return false;
   }
 
-  /// Exchanges the OAuth authorization code for tokens
-  /// Returns the complete response body on success, or null on failure.
-  Future<Map<String, dynamic>?> exchangeOAuthCode(String code) async {
-    try {
-      final codeVerifier = await _storage.read(key: 'google_oauth_code_verifier');
-      if (codeVerifier == null) {
-        debugPrint('OAuth Exchange Error: No code verifier found in secure storage.');
-        return null;
-      }
+  /// Completes the Google OAuth PKCE callback and creates a client profile.
+  Future<String?> completeGoogleLogin(Uri callbackUri) async {
+    final code = callbackUri.queryParameters['insforge_code'];
+    if (code == null || code.isEmpty) return null;
 
+    final codeVerifier = await _oauthStorage.read(key: _googleCodeVerifierKey);
+    if (codeVerifier == null || codeVerifier.isEmpty) return null;
+
+    try {
       final response = await _client.post(
         '/api/auth/oauth/exchange?client_type=mobile',
-        body: {
-          'code': code,
-          'code_verifier': codeVerifier,
-        },
+        body: {'code': code, 'code_verifier': codeVerifier},
         requireAuth: false,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final accessToken = data['accessToken'];
-        final refreshToken = data['refreshToken'];
-
-        await _client.saveTokens(accessToken, refreshToken);
-        // Clean up
-        await _storage.delete(key: 'google_oauth_code_verifier');
-        return data;
-      } else {
-        debugPrint('OAuth Exchange Error: ${response.body}');
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint('Google OAuth exchange error: ${response.body}');
         return null;
       }
+
+      final data = jsonDecode(response.body);
+      final accessToken = data['accessToken'];
+      final refreshToken = data['refreshToken'];
+      final user = data['user'] as Map<String, dynamic>?;
+      final userId = user?['id'] as String?;
+
+      if (accessToken == null || userId == null) return null;
+
+      await _client.saveTokens(accessToken, refreshToken);
+      await _oauthStorage.delete(key: _googleCodeVerifierKey);
+
+      final profileReady = await ensureClientProfile(
+        userId: userId,
+        email: user?['email'] as String?,
+        displayName: user?['name'] as String?,
+      );
+
+      if (!profileReady) {
+        await _client.clearTokens();
+        return null;
+      }
+
+      return userId;
     } catch (e) {
-      debugPrint('Exception during OAuth Exchange: $e');
+      debugPrint('Exception completing Google OAuth: $e');
       return null;
     }
   }
 
-  /// Logs out the user
+  /// Logs out the user and clears ALL stored auth state.
   Future<void> logout() async {
     try {
       await _client.post('/api/auth/logout');
     } catch (e) {
       debugPrint('Logout API call failed: $e');
     } finally {
-      // Always clear local tokens
-      await _client.clearTokens();
+      // Limpia todos los datos: tokens + code verifier OAuth + cualquier residuo.
+      await _client.clearAllAuthData();
     }
   }
 
-  /// Fetches the client profile associated with the userId
-  Future<UserProfile?> fetchUserProfile(String userId) async {
+  // ─────────────────────────────────────────────────────────
+  // Registro completo de técnico (2 pasos atómicos)
+  // ─────────────────────────────────────────────────────────
+
+  /// Registra un técnico/prestador de servicio completo.
+  /// Paso 1: Crea el usuario en auth (signUp con email+password)
+  /// Paso 2: Llama RPC register_technician para crear perfil+datos
+  Future<TechnicianRegistrationResult> registerTechnician(
+    TechnicianRegistrationData data,
+  ) async {
     try {
-      final response = await _client.get('/api/database/records/profiles?id=eq.$userId');
-      if (response.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(response.body);
-        if (list.isNotEmpty) {
-          return UserProfile.fromJson(list.first as Map<String, dynamic>);
-        }
-      } else {
-        debugPrint('Fetch profile error: ${response.body}');
+      // ── Paso 1: Crear usuario en auth ──
+      final fullName = '${data.firstName} ${data.lastName}';
+      final registerSuccess = await register(
+        data.email,
+        data.password,
+        name: fullName,
+      );
+
+      if (!registerSuccess) {
+        return const TechnicianRegistrationResult(
+          success: false,
+          error: 'auth_failed',
+          message:
+              'No se pudo crear la cuenta. Verifica tu correo e intenta de nuevo.',
+        );
       }
-      return null;
+
+      // ── Paso 2: Completar perfil de técnico via RPC ──
+      final rpcResult = await completeTechnicianProfile(data);
+      return rpcResult;
     } catch (e) {
-      debugPrint('Exception fetching user profile: $e');
-      return null;
+      debugPrint('Exception during technician registration: $e');
+      return TechnicianRegistrationResult(
+        success: false,
+        error: 'unexpected',
+        message: 'Error inesperado: $e',
+      );
     }
   }
 
-  /// Fetches the technician profile associated with the userId
-  Future<TechnicianProfile?> fetchTechnicianProfile(String userId) async {
+  /// Completa el perfil de técnico llamando a la función RPC.
+  /// Requiere que el usuario ya esté autenticado (tokens guardados).
+  /// Se usa después de verificar email (OTP) en el flujo de registro.
+  Future<TechnicianRegistrationResult> completeTechnicianProfile(
+    TechnicianRegistrationData data,
+  ) async {
     try {
-      final response = await _client.get('/api/database/records/technician_profiles?id=eq.$userId');
-      if (response.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(response.body);
-        if (list.isNotEmpty) {
-          return TechnicianProfile.fromJson(list.first as Map<String, dynamic>);
+      final response = await _client.post(
+        '/api/database/rpc/register_technician',
+        body: {
+          'p_first_name': data.firstName,
+          'p_last_name': data.lastName,
+          'p_dni': data.dni,
+          'p_district_name': data.district,
+          'p_bio': data.bio,
+          'p_phone': data.phone,
+          'p_email': data.email,
+          'p_avatar_url': data.avatarUrl,
+          'p_categories': data.categories,
+        },
+        requireAuth: true, // Usa el JWT del usuario recién creado
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final result = jsonDecode(response.body);
+
+        if (result['success'] == true) {
+          return TechnicianRegistrationResult(
+            success: true,
+            userId: result['user_id'],
+            verificationStatus: result['verification_status'],
+            message: result['message'] ?? 'Registro completado.',
+          );
+        } else {
+          return TechnicianRegistrationResult(
+            success: false,
+            error: result['error'],
+            message: result['message'] ?? 'Error al completar el perfil.',
+          );
         }
       } else {
-        debugPrint('Fetch tech profile error: ${response.body}');
+        debugPrint('RPC Error: ${response.body}');
+        return TechnicianRegistrationResult(
+          success: false,
+          error: 'rpc_failed',
+          message:
+              'Error al guardar los datos del perfil (${response.statusCode}).',
+        );
+      }
+    } catch (e) {
+      debugPrint('Exception during RPC call: $e');
+      return TechnicianRegistrationResult(
+        success: false,
+        error: 'network',
+        message: 'Error de conexión al guardar el perfil.',
+      );
+    }
+  }
+
+  /// Obtiene el perfil completo del técnico autenticado.
+  Future<Map<String, dynamic>?> getMyTechnicianProfile() async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/get_my_technician_profile',
+        requireAuth: true,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>?;
       }
       return null;
     } catch (e) {
@@ -249,149 +565,26 @@ class AuthService {
     }
   }
 
-  /// Registers a user as a technician, inserts technician_profiles and intermediate categories, and updates profile role.
-  Future<bool> createTechnicianProfile(
-    String userId, {
-    required String dni,
-    required int districtId,
-    required String bio,
-    required List<int> categoryIds,
-  }) async {
+  /// Verifica si el usuario actual tiene sesión activa
+  Future<bool> hasActiveSession() async {
+    final accessToken = await _client.getAccessToken();
+    final refreshToken = await _client.getRefreshToken();
+    if (accessToken == null && refreshToken == null) return false;
+
     try {
-      // 1. Insert technician profile
-      final techResponse = await _client.post(
-        '/api/database/records/technician_profiles',
-        body: [
-          {
-            'id': userId,
-            'dni': dni,
-            'district_id': districtId,
-            'bio': bio,
-            'verification_status': 'pending',
-          }
-        ],
-      );
-
-      if (techResponse.statusCode < 200 || techResponse.statusCode >= 300) {
-        debugPrint('Error creating tech profile: ${techResponse.body}');
-        return false;
-      }
-
-      // 2. Update role to 'technician' in profiles table
-      final roleResponse = await _client.patch(
-        '/api/database/records/profiles?id=eq.$userId',
-        body: {'role': 'technician'},
-      );
-
-      if (roleResponse.statusCode < 200 || roleResponse.statusCode >= 300) {
-        debugPrint('Error updating user role: ${roleResponse.body}');
-      }
-
-      // 3. Insert categories in technician_categories
-      for (final catId in categoryIds) {
-        await _client.post(
-          '/api/database/records/technician_categories',
-          body: [
-            {
-              'technician_id': userId,
-              'category_id': catId,
-            }
-          ],
-        );
-      }
-
-      return true;
-    } catch (e) {
-      debugPrint('Exception in createTechnicianProfile: $e');
-      return false;
-    }
-  }
-
-  /// Verifies current session. Returns userId if valid, otherwise tries to refresh and returns userId, or null if invalid.
-  Future<String?> checkCurrentSession() async {
-    try {
-      final token = await _client.getAccessToken();
-      if (token == null) return null;
-
       final response = await _client.get('/api/auth/sessions/current');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['user']['id'] as String?;
-      }
-
-      // If token is expired or unauthorized, try to refresh
-      final refreshSuccess = await refreshSession();
-      if (refreshSuccess) {
-        final retryResponse = await _client.get('/api/auth/sessions/current');
-        if (retryResponse.statusCode == 200) {
-          final data = jsonDecode(retryResponse.body);
-          return data['user']['id'] as String?;
-        }
-      }
-    } catch (e) {
-      debugPrint('Exception checking current session: $e');
-    }
-    return null;
-  }
-
-  /// Refreshes session using stored refresh token. Returns true on success.
-  Future<bool> refreshSession() async {
-    try {
-      final refreshToken = await _client.getRefreshToken();
-      if (refreshToken == null) return false;
-
-      final response = await _client.post(
-        '/api/auth/refresh?client_type=mobile',
-        body: {'refreshToken': refreshToken},
-        requireAuth: false,
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        final nextAccessToken = data['accessToken'];
-        final nextRefreshToken = data['refreshToken'];
-        await _client.saveTokens(nextAccessToken, nextRefreshToken);
-        return true;
-      }
-    } catch (e) {
-      debugPrint('Exception refreshing session: $e');
-    }
-    return false;
-  }
-
-  /// Creates the initial profile row in the public 'profiles' table after verification.
-  Future<bool> createInitialProfile(String userId, String email, String fullName, {String? avatarUrl}) async {
-    final nameParts = fullName.trim().split(' ');
-    final firstName = nameParts.isNotEmpty ? nameParts.first : fullName;
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-    
-    try {
-      final response = await _client.post(
-        '/api/database/records/profiles',
-        body: [
-          {
-            'id': userId,
-            'email': email,
-            'first_name': firstName,
-            'last_name': lastName,
-            'role': 'client',
-            'is_active': true,
-            'avatar_url': avatarUrl,
-          }
-        ],
-        requireAuth: true,
-      );
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      } else {
-        debugPrint('Create initial profile failed: StatusCode=${response.statusCode}, Body=${response.body}');
-        return false;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['user'] != null;
       }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await _client.clearTokens();
+      }
+      return false;
     } catch (e) {
-      debugPrint('Exception creating initial profile: $e');
+      debugPrint('Exception checking active session: $e');
       return false;
     }
   }
 }
-

@@ -1,178 +1,349 @@
-import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../core/constants/app_routes.dart';
 import '../../features/onboarding/screens/splash_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
-import '../../features/auth/screens/register_screen.dart';
-import '../../features/auth/screens/otp_screen.dart';
-import '../../features/auth/screens/oauth_callback_screen.dart';
-import '../../features/profile/screens/tech_registration_screen.dart';
-import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/screens/account_type_screen.dart';
+import '../../features/auth/screens/client_registration_screen.dart';
+import '../../features/auth/screens/provider_registration_screen.dart';
+import '../../features/auth/screens/registration_processing_screen.dart';
+import '../../features/auth/screens/registration_otp_screen.dart';
+import '../../features/auth/screens/registration_success_screen.dart';
+import '../../features/auth/screens/forgot_password_screen.dart';
+import '../../features/auth/screens/auth_processing_screen.dart';
 import '../navigation/client_shell.dart';
 import '../navigation/technician_shell.dart';
 
-/// Helper to convert a stream into a Listenable for GoRouter
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
-  }
+/// Configuracion principal del router de Toke+
+/// Usa GoRouter para navegacion declarativa sin flujo de autenticacion.
+final GoRouter appRouter = GoRouter(
+  initialLocation: AppRoutes.splash,
+  debugLogDiagnostics: kDebugMode,
 
-  late final StreamSubscription<dynamic> _subscription;
+  // Red de seguridad: ante cualquier navegación fallida (ruta inexistente,
+  // deep link inesperado, etc.) volvemos al splash en vez de pantalla en negro.
+  onException: (context, state, router) => router.go(AppRoutes.splash),
 
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
-  }
-}
+  routes: [
+    // ─── Splash ───
+    GoRoute(
+      path: AppRoutes.splash,
+      name: 'splash',
+      builder: (context, state) => const SplashScreen(),
+    ),
 
-/// Provider que expone la configuración del router de Toke+.
-/// Se enlaza dinámicamente con el estado de autenticación.
-final appRouterProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authProvider.notifier);
-
-  return GoRouter(
-    initialLocation: AppRoutes.splash,
-    debugLogDiagnostics: true,
-    refreshListenable: GoRouterRefreshStream(authNotifier.stream),
-    
-    redirect: (context, state) {
-      final authState = ref.read(authProvider);
-      debugPrint('GoRouter redirect: matchedLocation=${state.matchedLocation}, uri=${state.uri}');
-
-      // Si la app se está inicializando (cargando sesión persistente), no redirigir
-      if (authState.isInitializing) return null;
-
-      // Interceptar callback de Google OAuth (esquema personalizado tokeplus://callback)
-      if (state.uri.host == 'callback') {
-        final code = state.uri.queryParameters['insforge_code'];
-        debugPrint('GoRouter redirect: OAuth callback host detected, redirecting to: ${AppRoutes.oauthCallback}?insforge_code=$code');
-        return '${AppRoutes.oauthCallback}?insforge_code=$code';
-      }
-
-      final isLoggedIn = authState.status == AuthStatus.authenticated;
-      final isUnverified = authState.status == AuthStatus.unverified;
-
-      // Rutas públicas de autenticación y onboarding
-      final isGoingToAuth = state.matchedLocation == AppRoutes.login ||
-          state.matchedLocation == AppRoutes.register ||
-          state.matchedLocation == AppRoutes.otp ||
-          state.matchedLocation == AppRoutes.onboarding ||
-          state.matchedLocation == AppRoutes.splash ||
-          state.matchedLocation == AppRoutes.oauthCallback;
-
-      // 1. Caso: Usuario no verificado (OTP pendiente)
-      if (isUnverified && state.matchedLocation != AppRoutes.otp) {
-        return AppRoutes.otp;
-      }
-
-      // 2. Caso: Usuario no autenticado
-      if (!isLoggedIn) {
-        // Si no está logueado e intenta acceder a una ruta protegida
-        if (!isGoingToAuth) {
-          return AppRoutes.login;
-        }
-        return null;
-      }
-
-      // 3. Caso: Usuario autenticado intentando entrar a pantallas de Auth/Splash
-      if (isGoingToAuth) {
-        if (authState.viewMode == AppViewMode.technician) {
-          return AppRoutes.techHome;
-        } else {
-          return AppRoutes.clientHome;
-        }
-      }
-
-      return null;
-    },
-
-    routes: [
-      // ─── Splash ───
-      GoRoute(
-        path: AppRoutes.splash,
-        name: 'splash',
-        builder: (context, state) => const SplashScreen(),
-      ),
-
-      // ─── Onboarding ───
-      GoRoute(
-        path: AppRoutes.onboarding,
-        name: 'onboarding',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 220),
-        ),
-      ),
-
-      // ─── Autenticación ───
-      GoRoute(
-        path: AppRoutes.login,
-        name: 'login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.register,
-        name: 'register',
-        builder: (context, state) => const RegisterScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.otp,
-        name: 'otp',
-        builder: (context, state) => const OTPScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.oauthCallback,
-        name: 'callback',
-        builder: (context, state) {
-          final code = state.uri.queryParameters['insforge_code'];
-          return OAuthCallbackScreen(code: code);
+    // ─── Auth: pantalla de carga (callback OAuth de Google) ───
+    GoRoute(
+      path: AppRoutes.authProcessing,
+      name: 'authProcessing',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const AuthProcessingScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
         },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
+    ),
 
-      // ─── Registro Técnico (Conversión de rol) ───
-      GoRoute(
-        path: AppRoutes.becomeTechnician,
-        name: 'becomeTechnician',
-        builder: (context, state) => const TechRegistrationScreen(),
+    // ─── Onboarding ───
+    GoRoute(
+      path: AppRoutes.onboarding,
+      name: 'onboarding',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const OnboardingScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 220),
       ),
+    ),
 
-      // ─── Client Shell ───
-      GoRoute(
-        path: AppRoutes.clientHome,
-        name: 'clientHome',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const ClientShell(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 400),
+    // ─── Login ───
+    GoRoute(
+      path: AppRoutes.login,
+      name: 'login',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const LoginScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Registro: Seleccion tipo de cuenta ───
+    GoRoute(
+      path: AppRoutes.register,
+      name: 'register',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const AccountTypeScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Registro: Formulario cliente (3 pasos) ───
+    GoRoute(
+      path: '/register/client',
+      name: 'registerClient',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ClientRegistrationScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Registro: Formulario prestador (5 pasos) ───
+    GoRoute(
+      path: '/register/provider',
+      name: 'registerProvider',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ProviderRegistrationScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Registro: Procesando ───
+    GoRoute(
+      path: '/register/processing',
+      name: 'registerProcessing',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: RegistrationProcessingScreen(
+          registrationData: state.extra as Map<String, dynamic>?,
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
       ),
+    ),
 
-      // ─── Technician Shell ───
-      GoRoute(
-        path: AppRoutes.techHome,
-        name: 'techHome',
-        pageBuilder: (context, state) => CustomTransitionPage(
+    // ─── Registro: Verificación OTP (técnico) ───
+    GoRoute(
+      path: '/register/otp',
+      name: 'registerOtp',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return CustomTransitionPage(
           key: state.pageKey,
-          child: const TechnicianShell(),
+          child: RegistrationOtpScreen(
+            email: extra['email'] as String? ?? '',
+            registrationData:
+                extra['registrationData'] as Map<String, dynamic>? ?? {},
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+              child: child,
+            );
           },
-          transitionDuration: const Duration(milliseconds: 400),
+          transitionDuration: const Duration(milliseconds: 350),
+        );
+      },
+    ),
+
+    // ─── Registro: Exito ───
+    GoRoute(
+      path: '/register/success',
+      name: 'registerSuccess',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: RegistrationSuccessScreen(
+          role: state.extra as String? ?? 'client',
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
       ),
-    ],
-  );
-});
+    ),
+
+    // ─── Recuperar contraseña ───
+    GoRoute(
+      path: '/forgot-password',
+      name: 'forgotPassword',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ForgotPasswordScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── OTP Verificacion ───
+    GoRoute(
+      path: '/forgot-password/otp',
+      name: 'forgotPasswordOtp',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: OtpVerificationScreen(email: state.extra as String? ?? ''),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Nueva contraseña ───
+    GoRoute(
+      path: '/forgot-password/new-password',
+      name: 'forgotPasswordNewPassword',
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        final resetToken = extra is Map<String, dynamic>
+            ? extra['resetToken'] as String? ?? ''
+            : '';
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: NewPasswordScreen(resetToken: resetToken),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 350),
+        );
+      },
+    ),
+
+    // ─── Contraseña actualizada exitosamente ───
+    GoRoute(
+      path: '/forgot-password/success',
+      name: 'forgotPasswordSuccess',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const PasswordResetSuccessScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    ),
+
+    // ─── Client Shell ───
+    GoRoute(
+      path: AppRoutes.clientHome,
+      name: 'clientHome',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ClientShell(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 450),
+      ),
+    ),
+
+    // ─── Technician Shell ───
+    GoRoute(
+      path: AppRoutes.techHome,
+      name: 'techHome',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const TechnicianShell(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
+    ),
+  ],
+);

@@ -58,6 +58,10 @@ abstract final class AppStrings {
       'Ofrezco mis servicios profesionales';
   static const String continueBtn = 'Continuar';
 
+  // Home
+  static const String homeQuestion = '¿Necesitas un servicio?';
+  static const String homeExplore = 'Explorar';
+
   // Client
   static const String home = 'Inicio';
   static const String search = 'Buscar';
@@ -70,6 +74,38 @@ abstract final class AppStrings {
   static const String requests = 'Solicitudes';
   static const String myJobs = 'Mis Trabajos';
   static const String earnings = 'Ganancias';
+
+  // Notifications
+  static const String notificationsTitle = 'Notificaciones';
+  static const String receiveNewOrders = 'Recibir nuevos pedidos:';
+  static const String switchYes = 'Sí';
+  static const String switchNo = 'No';
+  static const String emptyNotifications = 'No hay notificaciones';
+
+  // Visibility config
+  static const String visibilityConfiguredOn =
+      'actualmente tenés configurado para recibir notificaciones de pedidos';
+  static const String visibilityConfiguredOff =
+      'actualmente tenés desactivada la recepción de notificaciones de pedidos';
+  static const String visibilityExplanation =
+      'Podés hacer que tu perfil sea o no visible para todos. Si ocultas '
+      'nadie podrá visualizar tu perfil y también dejarás de recibir trabajos.';
+  static const String profileVisibleQuestion = '¿Perfil visible?';
+  static const String saveChanges = 'Guardar cambios';
+  static const String processing = 'Procesando...';
+  static const String pleaseWait = 'Por favor espere';
+  static const String visibilityUpdated = 'Visibilidad\nactualizada con éxito';
+  static const String goToHome = 'Ir a Inicio';
+
+  // Share / Logout
+  static const String shareMessage =
+      '🇵🇪 ¡tokeplus.app es 100% peruana!\n'
+      'Conectá con personas que ofrecen o necesitan servicios como '
+      'albañilería, pintura, plomería y más. 🔨🪛🔧\n\n'
+      '💡 ¿Tienes un oficio? ¿Necesitás una mano?\n'
+      '¡Esta app es para vos!\n\n'
+      '📲 Descargala gratis acá: https://tokeplus.app/#descargar';
+  static const String logoutSuccess = 'Sesión cerrada';
 
   // Common
   static const String cancel = 'Cancelar';

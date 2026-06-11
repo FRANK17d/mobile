@@ -12,10 +12,7 @@ class PromoBanner extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Ofertas especiales',
-          style: AppTypography.headingSmall,
-        ),
+        Text('Ofertas especiales', style: AppTypography.headingSmall),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
           height: 140,

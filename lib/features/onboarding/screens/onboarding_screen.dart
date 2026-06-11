@@ -1,33 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart' hide ScaleEffect;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../../../core/constants/app_images.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/services/app_preferences.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../widgets/onboarding_page.dart';
-import '../../auth/providers/auth_provider.dart';
-
-const Color _brandRed = AppColors.primary;
-const Color _buttonText = Color(0xFF1F2937);
 
 /// Pantalla de onboarding/bienvenida - 5 páginas.
-class OnboardingScreen extends ConsumerStatefulWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   bool _didPrecacheImages = false;
+
+  static const _brandRed = AppColors.primary;
+  static const _buttonText = Color(0xFF1F2937);
 
   static const _pages = [
     OnboardingPageData(
@@ -88,20 +87,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  Future<void> _onFinish() async {
-    await ref.read(authProvider.notifier).completeOnboarding();
-    if (mounted) {
-      context.go(AppRoutes.login);
-    }
+  void _onFinish() async {
+    await AppPreferences.setOnboardingCompleted();
+    if (!mounted) return;
+    context.go(AppRoutes.clientHome);
   }
-  
+
   void _onSkip() => _onFinish();
 
   bool get _isLastPage => _currentPage == _pages.length - 1;
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final padding = MediaQuery.paddingOf(context);
+    final bottomPadding = padding.bottom;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -125,7 +124,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
             if (!_isLastPage)
               Positioned(
-                top: MediaQuery.paddingOf(context).top + 22,
+                top: padding.top + 22,
                 right: 34,
                 child: _SkipButton(onPressed: _onSkip),
               ),
@@ -163,46 +162,57 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Widget _buildCtaButton() {
-    return GestureDetector(
-          onTap: _onFinish,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  AppStrings.onboardingCta,
-                  style: GoogleFonts.nunito(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: _buttonText,
+    return Center(
+      child:
+          GestureDetector(
+                onTap: _onFinish,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 15,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppStrings.onboardingCta,
+                        style: GoogleFonts.nunito(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: _buttonText,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        color: _buttonText,
+                        size: 22,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: _buttonText,
-                  size: 22,
-                ),
-              ],
-            ),
-          ),
-        )
-        .animate()
-        .fadeIn(duration: 280.ms, delay: 80.ms)
-        .slideY(begin: 0.1, end: 0, duration: 280.ms);
+              )
+              .animate()
+              .fadeIn(duration: 250.ms, delay: 60.ms)
+              .scale(
+                begin: const Offset(0.92, 0.92),
+                end: const Offset(1.0, 1.0),
+                duration: 350.ms,
+                delay: 60.ms,
+                curve: Curves.easeOutBack,
+              ),
+    );
   }
 }
 
@@ -233,7 +243,7 @@ class _SkipButton extends StatelessWidget {
           style: GoogleFonts.nunito(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: _buttonText,
+            color: _OnboardingScreenState._buttonText,
           ),
         ),
       ),
@@ -271,13 +281,13 @@ class _ContinueButton extends StatelessWidget {
               style: GoogleFonts.nunito(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: _buttonText,
+                color: _OnboardingScreenState._buttonText,
               ),
             ),
             const SizedBox(width: 13),
             const Icon(
               Icons.arrow_forward_rounded,
-              color: _buttonText,
+              color: _OnboardingScreenState._buttonText,
               size: 24,
             ),
           ],

@@ -61,6 +61,8 @@ class OnboardingPage extends StatelessWidget {
                       width: watermarkSize,
                       height: watermarkSize,
                       fit: BoxFit.contain,
+                      cacheWidth: watermarkSize.toInt(),
+                      cacheHeight: watermarkSize.toInt(),
                     ),
                   ),
                 ),

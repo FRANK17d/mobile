@@ -2,11 +2,13 @@
     <application
         android:label="Toke+"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -20,21 +22,25 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- Habilitar soporte de Deep Links en Flutter/GoRouter -->
+            <!-- Desactiva el deep-linking automático de Flutter para que `app_links`
+                 sea el ÚNICO que maneje el callback OAuth (tokeplus://auth/callback).
+                 Sin esto, GoRouter intercepta el deep link y lanza
+                 "no routes for location: tokeplus://auth/callback". -->
             <meta-data
-              android:name="flutter_deeplinking_enabled"
-              android:value="true"
-              />
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Intent filter para recibir el Deep Link de Google OAuth -->
-            <intent-filter android:label="filter_tokeplus">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="tokeplus" android:host="callback" />
+                <data
+                    android:scheme="tokeplus"
+                    android:host="auth"
+                    android:pathPrefix="/callback" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
@@ -49,16 +55,9 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
-        <!-- Permite consultar navegadores externos para abrir URLs de inicio de sesión -->
         <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <category android:name="android.intent.category.BROWSABLE"/>
-            <data android:scheme="https"/>
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <category android:name="android.intent.category.BROWSABLE"/>
-            <data android:scheme="http"/>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
         </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

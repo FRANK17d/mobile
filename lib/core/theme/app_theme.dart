@@ -49,15 +49,16 @@ abstract final class AppTheme {
       // Navigation Rail (tablets)
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: AppColors.surfaceWhite,
-        selectedIconTheme: const IconThemeData(color: AppColors.primary),
-        unselectedIconTheme: const IconThemeData(color: AppColors.neutral500),
+        selectedIconTheme: const IconThemeData(color: Color(0xFFD94F4F)),
+        unselectedIconTheme: const IconThemeData(color: Color(0xFF2E3A4F)),
         selectedLabelTextStyle: AppTypography.labelSmall.copyWith(
-          color: AppColors.primary,
+          color: const Color(0xFFD94F4F),
+          fontWeight: FontWeight.w700,
         ),
         unselectedLabelTextStyle: AppTypography.labelSmall.copyWith(
-          color: AppColors.neutral500,
+          color: const Color(0xFF2E3A4F),
         ),
-        indicatorColor: AppColors.primarySurface,
+        indicatorColor: const Color(0xFFFEECEC),
       ),
 
       // Cards
@@ -226,8 +227,9 @@ abstract final class AppTheme {
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: AppColors.darkSurface,
         selectedIconTheme: const IconThemeData(color: AppColors.primary),
-        unselectedIconTheme:
-            const IconThemeData(color: AppColors.darkTextTertiary),
+        unselectedIconTheme: const IconThemeData(
+          color: AppColors.darkTextTertiary,
+        ),
         selectedLabelTextStyle: AppTypography.labelSmall.copyWith(
           color: AppColors.primary,
         ),

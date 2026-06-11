@@ -6,11 +6,10 @@ abstract final class AppRoutes {
 
   // ─── Auth (inactive for current no-login flow) ───
   static const String login = '/login';
+  static const String authProcessing = '/auth/processing';
   static const String register = '/register';
   static const String otp = '/otp';
   static const String roleSelection = '/role-selection';
-  static const String becomeTechnician = '/become-technician';
-  static const String oauthCallback = '/callback';
 
   // ─── Client ───
   static const String clientHome = '/client';

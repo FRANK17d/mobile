@@ -40,17 +40,13 @@ class MasterDetailLayout extends StatelessWidget {
     // Tablet: split layout
     return Row(
       children: [
-        SizedBox(
-          width: masterWidth,
-          child: master,
-        ),
+        SizedBox(width: masterWidth, child: master),
         if (showDivider) const VerticalDivider(thickness: 1, width: 1),
         Expanded(
-          child: detail ??
+          child:
+              detail ??
               detailPlaceholder ??
-              const Center(
-                child: Text('Selecciona un elemento'),
-              ),
+              const Center(child: Text('Selecciona un elemento')),
         ),
       ],
     );

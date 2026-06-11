@@ -27,10 +27,7 @@ class NearbyTechnicians extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Tecnicos cercanos',
-              style: AppTypography.headingSmall,
-            ),
+            Text('Tecnicos cercanos', style: AppTypography.headingSmall),
             TextButton(
               onPressed: onViewAll,
               child: Text(
@@ -43,25 +40,24 @@ class NearbyTechnicians extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _mockTechnicians.length,
-          separatorBuilder: (_, _) =>
-              const SizedBox(height: AppSpacing.xs),
-          itemBuilder: (context, index) {
-            final tech = _mockTechnicians[index];
-            return TechnicianCard(
-              name: tech.name,
-              specialty: tech.specialty,
-              rating: tech.rating,
-              reviewCount: tech.reviewCount,
-              imageUrl: '',
-              distance: tech.distance,
-              price: tech.price,
-              onTap: () => onTechnicianTap?.call('tech_$index'),
-            );
-          },
+        // Usamos Column en lugar de ListView.shrinkWrap para evitar
+        // layout eagerness innecesario con lista pequena y fija.
+        Column(
+          children: [
+            for (int i = 0; i < _mockTechnicians.length; i++) ...[
+              if (i > 0) const SizedBox(height: AppSpacing.xs),
+              TechnicianCard(
+                name: _mockTechnicians[i].name,
+                specialty: _mockTechnicians[i].specialty,
+                rating: _mockTechnicians[i].rating,
+                reviewCount: _mockTechnicians[i].reviewCount,
+                imageUrl: '',
+                distance: _mockTechnicians[i].distance,
+                price: _mockTechnicians[i].price,
+                onTap: () => onTechnicianTap?.call('tech_$i'),
+              ),
+            ],
+          ],
         ),
       ],
     );
