@@ -332,7 +332,7 @@ class _ExploreProvidersCard extends StatelessWidget {
                 color: const Color(0xFFEFF1F7),
                 padding: const EdgeInsets.only(top: 6),
                 child: Image.asset(
-                  'assets/images/explorar-section.png',
+                  'assets/images/explorar-section.webp',
                   fit: BoxFit.contain,
                   alignment: Alignment.bottomCenter,
                   cacheWidth: 400,

@@ -146,14 +146,14 @@ class _SplashScreenState extends State<SplashScreen>
         _precacheSvg(AppImages.mascot),
         _precacheSvg(AppImages.logoTextSvg),
         precacheImage(
-          const AssetImage('assets/images/explorar-section.png'),
+          const AssetImage('assets/images/explorar-section.webp'),
           context,
         ),
         precacheImage(
-          const AssetImage('assets/images/icon-whatssap.png'),
+          const AssetImage('assets/images/icon-whatssap.webp'),
           context,
         ),
-        precacheImage(const AssetImage('assets/images/icon-ig.png'), context),
+        precacheImage(const AssetImage('assets/images/icon-ig.webp'), context),
       ]);
     } catch (_) {}
   }

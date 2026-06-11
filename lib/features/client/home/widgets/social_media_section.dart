@@ -109,17 +109,17 @@ class _SocialLinkData {
 const _socialLinks = [
   _SocialLinkData(
     label: 'WhatsApp',
-    assetPath: 'assets/images/icon-whatssap.png',
+    assetPath: 'assets/images/icon-whatssap.webp',
   ),
-  _SocialLinkData(label: 'Instagram', assetPath: 'assets/images/icon-ig.png'),
+  _SocialLinkData(label: 'Instagram', assetPath: 'assets/images/icon-ig.webp'),
   _SocialLinkData(
     label: 'YouTube',
-    assetPath: 'assets/images/icon-youtube.png',
+    assetPath: 'assets/images/icon-youtube.webp',
   ),
-  _SocialLinkData(label: 'TikTok', assetPath: 'assets/images/icon-tiktok.png'),
+  _SocialLinkData(label: 'TikTok', assetPath: 'assets/images/icon-tiktok.webp'),
   _SocialLinkData(
     label: 'Facebook',
-    assetPath: 'assets/images/icon-facebook.png',
+    assetPath: 'assets/images/icon-facebook.webp',
   ),
-  _SocialLinkData(label: 'Web', assetPath: 'assets/images/icon-web.png'),
+  _SocialLinkData(label: 'Web', assetPath: 'assets/images/icon-web.webp'),
 ];

@@ -18,11 +18,11 @@ abstract final class AppImages {
   static const String mascot = '$_iconsPath/mascot.svg';
 
   // ─── Moneda / créditos ───
-  static const String tokeCoin = '$_basePath/moneda-toke.png';
-  static const String coinPackSmall = '$_basePath/moneda1.png';
-  static const String coinPackMedium = '$_basePath/moneda2.png';
-  static const String coinPackLarge = '$_basePath/moneda3.png';
-  static const String walletCredits = '$_basePath/billetera.png';
+  static const String tokeCoin = '$_basePath/moneda-toke.webp';
+  static const String coinPackSmall = '$_basePath/moneda1.webp';
+  static const String coinPackMedium = '$_basePath/moneda2.webp';
+  static const String coinPackLarge = '$_basePath/moneda3.webp';
+  static const String walletCredits = '$_basePath/billetera.webp';
 
   // ─── Onboarding (5 paginas) ───
   static const String onboarding1 = '$_onboardingPath/onboarding_1.webp';
