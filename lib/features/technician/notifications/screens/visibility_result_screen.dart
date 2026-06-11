@@ -159,7 +159,9 @@ class _SuccessView extends StatelessWidget {
             animation: controller,
             builder: (_, _) => Transform.scale(
               scale: scaleAnim.value,
-              child: visible ? const _SuccessCheckOrb() : const _HiddenEyesOrb(),
+              child: visible
+                  ? const _SuccessCheckOrb()
+                  : const _HiddenEyesOrb(),
             ),
           ),
 
@@ -232,7 +234,11 @@ class _HiddenEyesOrb extends StatelessWidget {
       gradient: const RadialGradient(
         center: Alignment(-0.3, -0.3),
         radius: 0.9,
-        colors: [AppColors.primaryLight, AppColors.primary, AppColors.primaryDark],
+        colors: [
+          AppColors.primaryLight,
+          AppColors.primary,
+          AppColors.primaryDark,
+        ],
         stops: [0.0, 0.5, 1.0],
       ),
       glowColor: AppColors.primary,

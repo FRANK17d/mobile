@@ -113,10 +113,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                 decoration: BoxDecoration(
                   color: config.backgroundColor,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  border: Border.all(
-                    color: config.borderColor,
-                    width: 1,
-                  ),
+                  border: Border.all(color: config.borderColor, width: 1),
                   boxShadow: [
                     BoxShadow(
                       color: config.borderColor.withValues(alpha: 0.15),
@@ -157,33 +154,33 @@ class _ToastWidgetState extends State<_ToastWidget>
   _ToastConfig _toastConfig(ToastType type) {
     return switch (type) {
       ToastType.success => const _ToastConfig(
-          backgroundColor: Color(0xFFF0FDF4),
-          borderColor: Color(0xFF86EFAC),
-          iconColor: Color(0xFF16A34A),
-          textColor: Color(0xFF15803D),
-          icon: Icons.check_circle_rounded,
-        ),
+        backgroundColor: Color(0xFFF0FDF4),
+        borderColor: Color(0xFF86EFAC),
+        iconColor: Color(0xFF16A34A),
+        textColor: Color(0xFF15803D),
+        icon: Icons.check_circle_rounded,
+      ),
       ToastType.error => const _ToastConfig(
-          backgroundColor: Color(0xFFFEF2F2),
-          borderColor: Color(0xFFFCA5A5),
-          iconColor: Color(0xFFDC2626),
-          textColor: Color(0xFFB91C1C),
-          icon: Icons.error_rounded,
-        ),
+        backgroundColor: Color(0xFFFEF2F2),
+        borderColor: Color(0xFFFCA5A5),
+        iconColor: Color(0xFFDC2626),
+        textColor: Color(0xFFB91C1C),
+        icon: Icons.error_rounded,
+      ),
       ToastType.warning => const _ToastConfig(
-          backgroundColor: Color(0xFFFFFBEB),
-          borderColor: Color(0xFFFCD34D),
-          iconColor: Color(0xFFD97706),
-          textColor: Color(0xFF92400E),
-          icon: Icons.warning_rounded,
-        ),
+        backgroundColor: Color(0xFFFFFBEB),
+        borderColor: Color(0xFFFCD34D),
+        iconColor: Color(0xFFD97706),
+        textColor: Color(0xFF92400E),
+        icon: Icons.warning_rounded,
+      ),
       ToastType.info => const _ToastConfig(
-          backgroundColor: Color(0xFFEFF6FF),
-          borderColor: Color(0xFF93C5FD),
-          iconColor: Color(0xFF2563EB),
-          textColor: Color(0xFF1E40AF),
-          icon: Icons.info_rounded,
-        ),
+        backgroundColor: Color(0xFFEFF6FF),
+        borderColor: Color(0xFF93C5FD),
+        iconColor: Color(0xFF2563EB),
+        textColor: Color(0xFF1E40AF),
+        icon: Icons.info_rounded,
+      ),
     };
   }
 }

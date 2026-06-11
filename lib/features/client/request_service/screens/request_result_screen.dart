@@ -140,7 +140,9 @@ class _SuccessView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       key: const ValueKey('success'),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPaddingH),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenPaddingH,
+      ),
       child: Column(
         children: [
           const Spacer(flex: 2),

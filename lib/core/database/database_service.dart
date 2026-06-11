@@ -11,7 +11,8 @@ class DatabaseService {
       final response = await _client.post(
         '/api/database/records/$tableName',
         body: [data],
-        requireAuth: true, // Requires the user to be logged in (has accessToken)
+        requireAuth:
+            true, // Requires the user to be logged in (has accessToken)
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -27,7 +28,12 @@ class DatabaseService {
   }
 
   /// Updates records matching a specific column condition
-  Future<bool> updateRecordByColumn(String tableName, String columnName, String value, Map<String, dynamic> data) async {
+  Future<bool> updateRecordByColumn(
+    String tableName,
+    String columnName,
+    String value,
+    Map<String, dynamic> data,
+  ) async {
     try {
       final response = await _client.patch(
         '/api/database/records/$tableName?$columnName=eq.$value',

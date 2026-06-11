@@ -89,10 +89,7 @@ class AccountTypeScreen extends StatelessWidget {
                 const Spacer(),
 
                 // ── Divider ──
-                Container(
-                  height: 1,
-                  color: AppColors.neutral200,
-                ),
+                Container(height: 1, color: AppColors.neutral200),
 
                 const SizedBox(height: AppSpacing.lg),
 
@@ -169,10 +166,7 @@ class _AccountTypeCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
               child: Center(
-                child: Text(
-                  emoji,
-                  style: const TextStyle(fontSize: 36),
-                ),
+                child: Text(emoji, style: const TextStyle(fontSize: 36)),
               ),
             ),
 

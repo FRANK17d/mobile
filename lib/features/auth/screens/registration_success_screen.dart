@@ -37,10 +37,7 @@ class _RegistrationSuccessScreenState extends State<RegistrationSuccessScreen>
     );
 
     _scaleAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.elasticOut,
-      ),
+      CurvedAnimation(parent: _animController, curve: Curves.elasticOut),
     );
 
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -188,11 +185,7 @@ class _SuccessCheckOrb extends StatelessWidget {
               ],
             ),
             child: const Center(
-              child: Icon(
-                Icons.check_rounded,
-                size: 72,
-                color: Colors.white,
-              ),
+              child: Icon(Icons.check_rounded, size: 72, color: Colors.white),
             ),
           ),
         ],
@@ -203,10 +196,7 @@ class _SuccessCheckOrb extends StatelessWidget {
 
 /// Boton pill con gradiente naranja (igual que en client_registration_screen)
 class _GradientPillButton extends StatelessWidget {
-  const _GradientPillButton({
-    required this.label,
-    required this.onTap,
-  });
+  const _GradientPillButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -220,10 +210,7 @@ class _GradientPillButton extends StatelessWidget {
         height: 56,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [
-              Color(0xFFEE7070),
-              Color(0xFFE85555),
-            ],
+            colors: [Color(0xFFEE7070), Color(0xFFE85555)],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -239,16 +226,8 @@ class _GradientPillButton extends StatelessWidget {
         child: Stack(
           children: [
             // ── Decoraciones curvas ──
-            Positioned(
-              left: 16,
-              top: 14,
-              child: _CurlDecor(isLeft: true),
-            ),
-            Positioned(
-              right: 16,
-              bottom: 14,
-              child: _CurlDecor(isLeft: false),
-            ),
+            Positioned(left: 16, top: 14, child: _CurlDecor(isLeft: true)),
+            Positioned(right: 16, bottom: 14, child: _CurlDecor(isLeft: false)),
             // ── Texto central ──
             Center(
               child: Text(
@@ -297,11 +276,20 @@ class _CurlPainter extends CustomPainter {
     final path = Path();
     if (isLeft) {
       path.moveTo(size.width * 0.7, 0);
-      path.quadraticBezierTo(0, size.height * 0.3, size.width * 0.2, size.height);
+      path.quadraticBezierTo(
+        0,
+        size.height * 0.3,
+        size.width * 0.2,
+        size.height,
+      );
     } else {
       path.moveTo(size.width * 0.3, 0);
       path.quadraticBezierTo(
-          size.width, size.height * 0.7, size.width * 0.8, size.height);
+        size.width,
+        size.height * 0.7,
+        size.width * 0.8,
+        size.height,
+      );
     }
     canvas.drawPath(path, paint);
   }

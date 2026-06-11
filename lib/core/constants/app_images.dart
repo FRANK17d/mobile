@@ -40,7 +40,8 @@ abstract final class AppImages {
   static const String hiwStep3 = '$_howItWorksPath/paso_3.webp';
   static const String hiwTrust = '$_howItWorksPath/buscar_soluciones.webp';
   static const String hiwOrderBasic = '$_howItWorksPath/pedido_basico.webp';
-  static const String hiwOrderExclusive = '$_howItWorksPath/pedido_exclusivo.webp';
+  static const String hiwOrderExclusive =
+      '$_howItWorksPath/pedido_exclusivo.webp';
 
   // ─── Placeholders ───
   // TODO: Agregar estos assets cuando se necesiten

@@ -44,7 +44,11 @@ class GradientPillButton extends StatelessWidget {
         child: Stack(
           children: [
             // ── Decoraciones curvas ──
-            const Positioned(left: 16, top: 14, child: _CurlDecor(isLeft: true)),
+            const Positioned(
+              left: 16,
+              top: 14,
+              child: _CurlDecor(isLeft: true),
+            ),
             const Positioned(
               right: 16,
               bottom: 14,
@@ -107,11 +111,20 @@ class _CurlPainter extends CustomPainter {
     final path = Path();
     if (isLeft) {
       path.moveTo(size.width * 0.7, 0);
-      path.quadraticBezierTo(0, size.height * 0.3, size.width * 0.2, size.height);
+      path.quadraticBezierTo(
+        0,
+        size.height * 0.3,
+        size.width * 0.2,
+        size.height,
+      );
     } else {
       path.moveTo(size.width * 0.3, 0);
       path.quadraticBezierTo(
-          size.width, size.height * 0.7, size.width * 0.8, size.height);
+        size.width,
+        size.height * 0.7,
+        size.width * 0.8,
+        size.height,
+      );
     }
     canvas.drawPath(path, paint);
   }

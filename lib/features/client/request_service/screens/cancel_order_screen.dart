@@ -44,7 +44,11 @@ class _CancelOrderScreenState extends State<CancelOrderScreen> {
         ),
         body: Column(
           children: [
-            const Divider(height: 1, thickness: 1, color: AppColors.borderLight),
+            const Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.borderLight,
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(

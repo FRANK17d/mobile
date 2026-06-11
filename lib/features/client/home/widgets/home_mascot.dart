@@ -22,6 +22,7 @@ class HomeMascot extends StatefulWidget {
   @override
   State<HomeMascot> createState() => _HomeMascotState();
 }
+
 class _HomeMascotState extends State<HomeMascot> with TickerProviderStateMixin {
   late final AnimationController _bounceController;
   late final AnimationController _spinController;
@@ -53,10 +54,9 @@ class _HomeMascotState extends State<HomeMascot> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 3200),
     );
 
-    _rotation = Tween<double>(
-      begin: -0.06,
-      end: 0.06,
-    ).animate(CurvedAnimation(parent: _spinController, curve: Curves.easeInOut));
+    _rotation = Tween<double>(begin: -0.06, end: 0.06).animate(
+      CurvedAnimation(parent: _spinController, curve: Curves.easeInOut),
+    );
 
     // ── Parpadeo (squish vertical rapido) ──
     _blinkController = AnimationController(

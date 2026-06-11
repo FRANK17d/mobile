@@ -227,8 +227,9 @@ abstract final class AppTheme {
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: AppColors.darkSurface,
         selectedIconTheme: const IconThemeData(color: AppColors.primary),
-        unselectedIconTheme:
-            const IconThemeData(color: AppColors.darkTextTertiary),
+        unselectedIconTheme: const IconThemeData(
+          color: AppColors.darkTextTertiary,
+        ),
         selectedLabelTextStyle: AppTypography.labelSmall.copyWith(
           color: AppColors.primary,
         ),

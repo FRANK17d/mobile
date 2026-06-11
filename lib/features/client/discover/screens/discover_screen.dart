@@ -30,9 +30,9 @@ class DiscoverScreen extends StatelessWidget {
   }
 
   void _openHowItWorks(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()));
   }
 
   @override

@@ -22,101 +22,98 @@ class HeroBubble extends StatelessWidget {
       children: [
         // ── Burbuja blanca ──
         Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.only(top: 26, bottom: 22),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.only(top: 26, bottom: 22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Titulo
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Text(
-                      AppStrings.homeQuestion,
-                      style: AppTypography.headingLarge.copyWith(
-                        color: AppColors.neutral900,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 22,
-                      ),
-                    ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Titulo
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Text(
+                  AppStrings.homeQuestion,
+                  style: AppTypography.headingLarge.copyWith(
+                    color: AppColors.neutral900,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 22,
                   ),
-                  const SizedBox(height: 16),
+                ),
+              ),
+              const SizedBox(height: 16),
 
-                  // Buscador con typewriter
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: GestureDetector(
-                      onTap: onSearchTap,
-                      child: Container(
-                        height: AppSpacing.inputHeight,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.neutral50,
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusMd,
+              // Buscador con typewriter
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: GestureDetector(
+                  onTap: onSearchTap,
+                  child: Container(
+                    height: AppSpacing.inputHeight,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral50,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      border: Border.all(color: AppColors.neutral200),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _TypewriterText(
+                            phrases: const [
+                              'Electricista cerca de mi...',
+                              'Plomero para mi hogar...',
+                              'Pintor profesional...',
+                              'Servicio de limpieza...',
+                              'Cerrajero urgente...',
+                              'Tecnico de aire acondicionado...',
+                            ],
                           ),
-                          border: Border.all(color: AppColors.neutral200),
                         ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _TypewriterText(
-                                phrases: const [
-                                  'Electricista cerca de mi...',
-                                  'Plomero para mi hogar...',
-                                  'Pintor profesional...',
-                                  'Servicio de limpieza...',
-                                  'Cerrajero urgente...',
-                                  'Tecnico de aire acondicionado...',
-                                ],
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: onCameraTap ?? onSearchTap,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusSm,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: onCameraTap ?? onSearchTap,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    AppSpacing.radiusSm,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                              ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: AppColors.primary,
+                              size: 20,
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 18),
-
-                  // Carrusel de categorias dentro de la tarjeta, debajo del buscador.
-                  const CategoriesCarousel(),
-                ],
+                ),
               ),
-            )
-            ,
+
+              const SizedBox(height: 18),
+
+              // Carrusel de categorias dentro de la tarjeta, debajo del buscador.
+              const CategoriesCarousel(),
+            ],
+          ),
+        ),
 
         // ── Cola de burbuja (triangulo) ──
         Align(

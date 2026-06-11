@@ -58,10 +58,8 @@ class _LoadingMascotState extends State<LoadingMascot>
 
     return AnimatedBuilder(
       animation: _bounceController,
-      builder: (_, child) => Transform.translate(
-        offset: Offset(0, _bounceY.value),
-        child: child,
-      ),
+      builder: (_, child) =>
+          Transform.translate(offset: Offset(0, _bounceY.value), child: child),
       child: SizedBox(
         width: widget.size,
         height: widget.size,
@@ -150,7 +148,11 @@ class _ThreeDotsPainter extends CustomPainter {
 
       final x = size.width * 0.5 + (i - 1) * spacing;
 
-      canvas.drawCircle(Offset(x, centerY + 2), baseRadius * scale, shadowPaint);
+      canvas.drawCircle(
+        Offset(x, centerY + 2),
+        baseRadius * scale,
+        shadowPaint,
+      );
       canvas.drawCircle(Offset(x, centerY), baseRadius * scale, paint);
     }
   }

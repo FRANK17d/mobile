@@ -50,9 +50,7 @@ class _UnauthenticatedOrdersView extends StatelessWidget {
                 right: 20,
                 bottom: 28,
               ),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1D2939),
-              ),
+              decoration: const BoxDecoration(color: Color(0xFF1D2939)),
               child: Column(
                 children: [
                   // ── Top bar: titulo + boton Entrar + menu ──
@@ -67,13 +65,17 @@ class _UnauthenticatedOrdersView extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      _EntrarButton(onTap: () {
-                        context.push(AppRoutes.login);
-                      }),
+                      _EntrarButton(
+                        onTap: () {
+                          context.push(AppRoutes.login);
+                        },
+                      ),
                       const SizedBox(width: 10),
-                      _HeaderMenuButton(onTap: () {
-                        showAppMenuSheet(context);
-                      }),
+                      _HeaderMenuButton(
+                        onTap: () {
+                          showAppMenuSheet(context);
+                        },
+                      ),
                     ],
                   ),
 
@@ -154,9 +156,11 @@ class _UnauthenticatedOrdersView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 28),
-                          _ComoFuncionaButton(onTap: () {
-                            // TODO: navegar a pantalla como funciona
-                          }),
+                          _ComoFuncionaButton(
+                            onTap: () {
+                              // TODO: navegar a pantalla como funciona
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -271,10 +275,7 @@ class _AuthenticatedOrdersView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Pedidos'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Mis Pedidos'), centerTitle: false),
       body: DefaultTabController(
         length: 3,
         child: Column(

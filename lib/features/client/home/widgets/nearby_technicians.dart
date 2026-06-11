@@ -27,10 +27,7 @@ class NearbyTechnicians extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Tecnicos cercanos',
-              style: AppTypography.headingSmall,
-            ),
+            Text('Tecnicos cercanos', style: AppTypography.headingSmall),
             TextButton(
               onPressed: onViewAll,
               child: Text(

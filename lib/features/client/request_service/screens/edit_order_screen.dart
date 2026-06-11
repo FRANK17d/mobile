@@ -59,7 +59,11 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
         ),
         body: Column(
           children: [
-            const Divider(height: 1, thickness: 1, color: AppColors.borderLight),
+            const Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.borderLight,
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(
@@ -83,7 +87,9 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusLg,
+                        ),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: TextField(

@@ -52,9 +52,9 @@ class AdaptiveScaffold extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       body: MediaQuery(
         data: MediaQuery.of(context).copyWith(
-          padding: MediaQuery.of(context).padding.copyWith(
-            bottom: bottomPadding + navBarHeight,
-          ),
+          padding: MediaQuery.of(
+            context,
+          ).padding.copyWith(bottom: bottomPadding + navBarHeight),
         ),
         child: Stack(
           children: [

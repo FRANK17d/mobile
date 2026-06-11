@@ -54,17 +54,17 @@ class OnboardingPage extends StatelessWidget {
                 Positioned(
                   top: topHeight * 0.05,
                   right: -watermarkSize * 0.38,
-                    child: Opacity(
-                      opacity: 0.055,
-                      child: Image.asset(
-                        AppImages.logo,
-                        width: watermarkSize,
-                        height: watermarkSize,
-                        fit: BoxFit.contain,
-                        cacheWidth: watermarkSize.toInt(),
-                        cacheHeight: watermarkSize.toInt(),
-                      ),
+                  child: Opacity(
+                    opacity: 0.055,
+                    child: Image.asset(
+                      AppImages.logo,
+                      width: watermarkSize,
+                      height: watermarkSize,
+                      fit: BoxFit.contain,
+                      cacheWidth: watermarkSize.toInt(),
+                      cacheHeight: watermarkSize.toInt(),
                     ),
+                  ),
                 ),
               ],
             ),

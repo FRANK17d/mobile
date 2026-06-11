@@ -75,7 +75,8 @@ class _OrderTypeSheetState extends State<_OrderTypeSheet> {
           _OrderOptionCard(
             asset: AppImages.hiwOrderBasic,
             title: 'Toke+ básico',
-            subtitle: 'Recibirás varias propuestas y elegís con quien trabajar.',
+            subtitle:
+                'Recibirás varias propuestas y elegís con quien trabajar.',
             selected: _selected == OrderType.basic,
             onTap: () => setState(() => _selected = OrderType.basic),
           ),

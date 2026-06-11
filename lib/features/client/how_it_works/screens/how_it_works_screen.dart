@@ -296,11 +296,7 @@ class _StepBlock extends StatelessWidget {
 // Fila de beneficio: ícono + título + descripción
 // ─────────────────────────────────────────────────────────
 class _Benefit extends StatelessWidget {
-  const _Benefit({
-    required this.icon,
-    required this.title,
-    required this.body,
-  });
+  const _Benefit({required this.icon, required this.title, required this.body});
 
   final IconData icon;
   final String title;

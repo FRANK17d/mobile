@@ -313,56 +313,56 @@ class _ExploreProvidersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const ExploreScreen()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const ExploreScreen())),
       child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.neutral50,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.neutral200),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Expanded(
-            flex: 7,
-            child: Container(
-              width: double.infinity,
-              color: const Color(0xFFEFF1F7),
-              padding: const EdgeInsets.only(top: 6),
-              child: Image.asset(
-                'assets/images/explorar-section.png',
-                fit: BoxFit.contain,
-                alignment: Alignment.bottomCenter,
-                cacheWidth: 400,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Container(
-              width: double.infinity,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF7F8FC),
-                border: Border(top: BorderSide(color: AppColors.neutral200)),
-              ),
-              child: Text(
-                'Prestadores\nde servicios',
-                textAlign: TextAlign.center,
-                style: AppTypography.headingSmall.copyWith(
-                  color: const Color(0xFF444A5F),
-                  fontSize: 18,
-                  height: 1.15,
-                  letterSpacing: 0.8,
-                  fontWeight: FontWeight.w600,
+        decoration: BoxDecoration(
+          color: AppColors.neutral50,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.neutral200),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Expanded(
+              flex: 7,
+              child: Container(
+                width: double.infinity,
+                color: const Color(0xFFEFF1F7),
+                padding: const EdgeInsets.only(top: 6),
+                child: Image.asset(
+                  'assets/images/explorar-section.png',
+                  fit: BoxFit.contain,
+                  alignment: Alignment.bottomCenter,
+                  cacheWidth: 400,
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+            Expanded(
+              flex: 3,
+              child: Container(
+                width: double.infinity,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF7F8FC),
+                  border: Border(top: BorderSide(color: AppColors.neutral200)),
+                ),
+                child: Text(
+                  'Prestadores\nde servicios',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.headingSmall.copyWith(
+                    color: const Color(0xFF444A5F),
+                    fontSize: 18,
+                    height: 1.15,
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -384,55 +384,55 @@ class _ExploreActionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap == null ? null : () => onTap!(context),
       child: Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FC),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.neutral200),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEDEFF6),
-                    shape: BoxShape.circle,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FC),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.neutral200),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEDEFF6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: AppColors.neutral800, size: 23),
                   ),
-                  child: Icon(icon, color: AppColors.neutral800, size: 23),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.headingSmall.copyWith(
-                    color: const Color(0xFF444A5F),
-                    fontSize: 15,
-                    letterSpacing: 0.4,
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 7),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.headingSmall.copyWith(
+                      color: const Color(0xFF444A5F),
+                      fontSize: 15,
+                      letterSpacing: 0.4,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Positioned(
-            right: 8,
-            child: Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.neutral500,
-              size: 26,
+            const Positioned(
+              right: 8,
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.neutral500,
+                size: 26,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

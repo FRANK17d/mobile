@@ -99,7 +99,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         body: Column(
           children: [
-            const Divider(height: 1, thickness: 1, color: AppColors.borderLight),
+            const Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.borderLight,
+            ),
 
             // ── Switch "Recibir nuevos pedidos" ──
             Padding(
@@ -250,7 +254,10 @@ class _EmptyNotifications extends StatelessWidget {
                 Positioned(
                   top: 30,
                   right: 30,
-                  child: _DecorShape(isSquare: false, color: AppColors.primaryLight),
+                  child: _DecorShape(
+                    isSquare: false,
+                    color: AppColors.primaryLight,
+                  ),
                 ),
                 const Positioned(
                   bottom: 44,

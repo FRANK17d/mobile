@@ -60,9 +60,7 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
                 right: 20,
                 bottom: 28,
               ),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1D2939),
-              ),
+              decoration: const BoxDecoration(color: Color(0xFF1D2939)),
               child: Column(
                 children: [
                   // ── Top bar: titulo + boton Entrar + menu ──
@@ -77,13 +75,17 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      _EntrarButton(onTap: () {
-                        context.push(AppRoutes.login);
-                      }),
+                      _EntrarButton(
+                        onTap: () {
+                          context.push(AppRoutes.login);
+                        },
+                      ),
                       const SizedBox(width: 10),
-                      _HeaderMenuButton(onTap: () {
-                        showAppMenuSheet(context);
-                      }),
+                      _HeaderMenuButton(
+                        onTap: () {
+                          showAppMenuSheet(context);
+                        },
+                      ),
                     ],
                   ),
 
@@ -164,9 +166,11 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 28),
-                          _ExplorarServiciosButton(onTap: () {
-                            // TODO: navegar a explorar servicios
-                          }),
+                          _ExplorarServiciosButton(
+                            onTap: () {
+                              // TODO: navegar a explorar servicios
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -291,10 +295,7 @@ class _AuthenticatedMessagesView extends StatelessWidget {
         title: const Text('Mensajes'),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.search_rounded), onPressed: () {}),
         ],
       ),
       body: MasterDetailLayout(
@@ -309,13 +310,17 @@ class _AuthenticatedMessagesView extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.chat_bubble_outline_rounded,
-                  size: 64, color: AppColors.neutral300),
+              Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 64,
+                color: AppColors.neutral300,
+              ),
               const SizedBox(height: 16),
               Text(
                 'Selecciona una conversacion',
-                style: AppTypography.bodyLarge
-                    .copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyLarge.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -363,8 +368,11 @@ class _ConversationsList extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: AppColors.neutral200,
                       ),
-                      child: const Icon(Icons.person_rounded,
-                          color: AppColors.neutral400, size: 28),
+                      child: const Icon(
+                        Icons.person_rounded,
+                        color: AppColors.neutral400,
+                        size: 28,
+                      ),
                     ),
                     if (conv.isOnline)
                       Positioned(
@@ -441,8 +449,9 @@ class _ConversationsList extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: AppColors.primary,
-                                borderRadius:
-                                    BorderRadius.circular(AppSpacing.radiusFull),
+                                borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusFull,
+                                ),
                               ),
                               child: Text(
                                 '${conv.unreadCount}',
@@ -494,8 +503,11 @@ class _ChatView extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppColors.neutral200,
                 ),
-                child: const Icon(Icons.person_rounded,
-                    color: AppColors.neutral400, size: 22),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: AppColors.neutral400,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Column(
@@ -517,10 +529,7 @@ class _ChatView extends StatelessWidget {
                 icon: const Icon(Icons.phone_outlined),
                 onPressed: () {},
               ),
-              IconButton(
-                icon: const Icon(Icons.more_vert),
-                onPressed: () {},
-              ),
+              IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
             ],
           ),
         ),
@@ -536,23 +545,23 @@ class _ChatView extends StatelessWidget {
                   (
                     text: 'Hola, necesito ayuda con la instalacion',
                     isMe: false,
-                    time: '10:30 AM'
+                    time: '10:30 AM',
                   ),
                   (
                     text: 'Claro, puedo ir hoy a las 3pm. Te queda bien?',
                     isMe: true,
-                    time: '10:32 AM'
+                    time: '10:32 AM',
                   ),
                   (
                     text:
                         'Perfecto! Te espero. La direccion es Av. Libertador 123',
                     isMe: false,
-                    time: '10:33 AM'
+                    time: '10:33 AM',
                   ),
                   (
                     text: 'Anotado. Llevo todas las herramientas necesarias.',
                     isMe: true,
-                    time: '10:35 AM'
+                    time: '10:35 AM',
                   ),
                 ];
                 return ListView.builder(
@@ -588,19 +597,22 @@ class _ChatView extends StatelessWidget {
                 Expanded(
                   child: Container(
                     height: 42,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.neutral100,
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusFull),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
                     ),
                     child: Center(
                       child: TextField(
                         decoration: InputDecoration(
                           hintText: 'Escribe un mensaje...',
-                          hintStyle: AppTypography.bodySmall
-                              .copyWith(color: AppColors.textTertiary),
+                          hintStyle: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.zero,
                           isDense: true,

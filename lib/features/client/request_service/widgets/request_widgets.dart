@@ -185,9 +185,7 @@ class RequestBottomBar extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: AppColors.backgroundPrimary,
-        border: const Border(
-          top: BorderSide(color: AppColors.borderLight),
-        ),
+        border: const Border(top: BorderSide(color: AppColors.borderLight)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -204,11 +202,7 @@ class RequestBottomBar extends StatelessWidget {
 /// Campo con estilo de "select" (no editable) que muestra un valor y un chevron.
 /// Sin lógica de selección todavía: solo presentación.
 class FakeSelectField extends StatelessWidget {
-  const FakeSelectField({
-    super.key,
-    required this.value,
-    this.onTap,
-  });
+  const FakeSelectField({super.key, required this.value, this.onTap});
 
   final String value;
   final VoidCallback? onTap;

@@ -59,7 +59,10 @@ class OrderReviewScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.textPrimary),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.textPrimary,
+                      ),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
                     Text(
@@ -70,9 +73,7 @@ class OrderReviewScreen extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    _OrderMenu(
-                      onSelected: (a) => _onMenuSelected(context, a),
-                    ),
+                    _OrderMenu(onSelected: (a) => _onMenuSelected(context, a)),
                   ],
                 ),
               ),
@@ -162,7 +163,10 @@ class _OrderMenu extends StatelessWidget {
       itemBuilder: (context) => const [
         PopupMenuItem(
           value: _OrderMenuAction.details,
-          child: _MenuRow(icon: Icons.info_outline, label: 'Detalles del pedido'),
+          child: _MenuRow(
+            icon: Icons.info_outline,
+            label: 'Detalles del pedido',
+          ),
         ),
         PopupMenuItem(
           value: _OrderMenuAction.edit,
@@ -298,7 +302,11 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              _IconLine(icon: Icons.person_outline, text: 'Ahdb H.', bold: true),
+              _IconLine(
+                icon: Icons.person_outline,
+                text: 'Ahdb H.',
+                bold: true,
+              ),
               const SizedBox(height: AppSpacing.xs),
               _IconLine(
                 icon: Icons.location_on_outlined,
@@ -401,8 +409,16 @@ class _RedClockPainter extends CustomPainter {
 
     // Burbujas grises alrededor.
     final bubble = Paint()..color = AppColors.neutral200;
-    canvas.drawCircle(center + Offset(-radius * 1.15, -radius * 0.5), 8, bubble);
-    canvas.drawCircle(center + Offset(-radius * 1.25, -radius * 0.05), 5, bubble);
+    canvas.drawCircle(
+      center + Offset(-radius * 1.15, -radius * 0.5),
+      8,
+      bubble,
+    );
+    canvas.drawCircle(
+      center + Offset(-radius * 1.25, -radius * 0.05),
+      5,
+      bubble,
+    );
     canvas.drawCircle(center + Offset(radius * 1.2, radius * 0.55), 7, bubble);
     canvas.drawCircle(center + Offset(radius * 1.35, radius * 0.25), 4, bubble);
 

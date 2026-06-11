@@ -55,9 +55,7 @@ class _RequestServiceWizardScreenState
       setState(() => _step++);
     } else {
       Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const RequestResultScreen(),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const RequestResultScreen()),
       );
     }
   }
@@ -309,10 +307,7 @@ class _LocationStep extends StatelessWidget {
         // ── Barrio (opcional) ──
         _FieldLabel('Barrio', optional: true),
         const SizedBox(height: AppSpacing.xs),
-        _PlainInput(
-          controller: barrioController,
-          hint: 'Ej: La concordia',
-        ),
+        _PlainInput(controller: barrioController, hint: 'Ej: La concordia'),
       ],
     );
   }
@@ -411,8 +406,18 @@ class _DayStrip extends StatelessWidget {
 
   static const _weekdays = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   static const _months = [
-    'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-    'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+    'ENE',
+    'FEB',
+    'MAR',
+    'ABR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AGO',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DIC',
   ];
 
   @override

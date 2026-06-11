@@ -8,8 +8,7 @@ class AuthSnapshot {
   final bool isAuthenticated;
   final Map<String, dynamic>? profile;
 
-  bool get isTechnician =>
-      profile != null && profile!['role'] == 'technician';
+  bool get isTechnician => profile != null && profile!['role'] == 'technician';
 
   /// Estado inicial: aún no autenticado / sin resolver.
   static const unknown = AuthSnapshot(isAuthenticated: false);
@@ -26,8 +25,9 @@ class AuthStore {
 
   static final AuthStore instance = AuthStore._();
 
-  final ValueNotifier<AuthSnapshot> notifier =
-      ValueNotifier<AuthSnapshot>(AuthSnapshot.unknown);
+  final ValueNotifier<AuthSnapshot> notifier = ValueNotifier<AuthSnapshot>(
+    AuthSnapshot.unknown,
+  );
 
   AuthSnapshot get value => notifier.value;
 

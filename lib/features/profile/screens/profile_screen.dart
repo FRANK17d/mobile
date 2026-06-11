@@ -33,9 +33,7 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).padding.bottom,
-        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         child: ContentContainer(
           child: Column(
             children: [
@@ -51,10 +49,7 @@ class ProfileScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.neutral200,
-                        border: Border.all(
-                          color: AppColors.primary,
-                          width: 3,
-                        ),
+                        border: Border.all(color: AppColors.primary, width: 3),
                       ),
                       child: Icon(
                         Icons.person_rounded,
@@ -67,26 +62,32 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       isTechnician ? 'Electricista Certificado' : 'Cliente',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     if (isTechnician) ...[
                       const SizedBox(height: AppSpacing.xs),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.star_rounded,
-                              size: 18, color: AppColors.starFilled),
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 18,
+                            color: AppColors.starFilled,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '4.8',
-                            style: AppTypography.titleMedium
-                                .copyWith(fontWeight: FontWeight.w700),
+                            style: AppTypography.titleMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           Text(
                             ' (124 resenas)',
-                            style: AppTypography.bodySmall
-                                .copyWith(color: AppColors.textTertiary),
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
                           ),
                         ],
                       ),
@@ -210,11 +211,12 @@ class ProfileScreen extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
                     side: const BorderSide(color: AppColors.error),
-                    minimumSize:
-                        const Size(double.infinity, AppSpacing.buttonHeight),
+                    minimumSize: const Size(
+                      double.infinity,
+                      AppSpacing.buttonHeight,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusMd),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                   ),
                 ),
@@ -224,8 +226,9 @@ class ProfileScreen extends StatelessWidget {
 
               Text(
                 'Toke+ v1.0.0',
-                style: AppTypography.caption
-                    .copyWith(color: AppColors.textTertiary),
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
 
               const SizedBox(height: AppSpacing.xxl),
@@ -265,8 +268,7 @@ class _ProfileStat extends StatelessWidget {
         Text(value, style: AppTypography.headingSmall),
         Text(
           label,
-          style:
-              AppTypography.caption.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
         ),
       ],
     );
@@ -301,8 +303,7 @@ class _ProfileSection extends StatelessWidget {
             children: [
               for (int i = 0; i < items.length; i++) ...[
                 items[i],
-                if (i < items.length - 1)
-                  const Divider(height: 0, indent: 52),
+                if (i < items.length - 1) const Divider(height: 0, indent: 52),
               ],
             ],
           ),
@@ -339,14 +340,13 @@ class _ProfileMenuItem extends StatelessWidget {
           children: [
             Icon(icon, size: 22, color: AppColors.textSecondary),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(title, style: AppTypography.bodyMedium),
-            ),
+            Expanded(child: Text(title, style: AppTypography.bodyMedium)),
             if (trailing != null)
               Text(
                 trailing!,
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.textTertiary),
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
             const SizedBox(width: AppSpacing.xxs),
             const Icon(

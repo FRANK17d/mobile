@@ -201,11 +201,7 @@ const _fallbackCategories = [
 
 // ─── Chip de categoria ───
 class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({
-    required this.label,
-    required this.emoji,
-    this.onTap,
-  });
+  const _CategoryChip({required this.label, required this.emoji, this.onTap});
 
   final String label;
   final String emoji;

@@ -92,6 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     context.go(AppRoutes.clientHome);
   }
+
   void _onSkip() => _onFinish();
 
   bool get _isLastPage => _currentPage == _pages.length - 1;
@@ -162,52 +163,55 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildCtaButton() {
     return Center(
-      child: GestureDetector(
-            onTap: _onFinish,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+      child:
+          GestureDetector(
+                onTap: _onFinish,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 15,
                   ),
-                ],
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        AppStrings.onboardingCta,
+                        style: GoogleFonts.nunito(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: _buttonText,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        color: _buttonText,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .animate()
+              .fadeIn(duration: 250.ms, delay: 60.ms)
+              .scale(
+                begin: const Offset(0.92, 0.92),
+                end: const Offset(1.0, 1.0),
+                duration: 350.ms,
+                delay: 60.ms,
+                curve: Curves.easeOutBack,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    AppStrings.onboardingCta,
-                    style: GoogleFonts.nunito(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: _buttonText,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: _buttonText,
-                    size: 22,
-                  ),
-                ],
-              ),
-            ),
-          )
-          .animate()
-          .fadeIn(duration: 250.ms, delay: 60.ms)
-          .scale(
-            begin: const Offset(0.92, 0.92),
-            end: const Offset(1.0, 1.0),
-            duration: 350.ms,
-            delay: 60.ms,
-            curve: Curves.easeOutBack,
-          ),
     );
   }
 }

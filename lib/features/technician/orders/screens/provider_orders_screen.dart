@@ -87,9 +87,7 @@ class _OrdersHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF2D3E50),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,11 +247,7 @@ class _SearchBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.search_rounded,
-            color: AppColors.neutral500,
-            size: 22,
-          ),
+          Icon(Icons.search_rounded, color: AppColors.neutral500, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -264,11 +258,7 @@ class _SearchBar extends StatelessWidget {
               ),
             ),
           ),
-          Icon(
-            Icons.tune_rounded,
-            color: AppColors.neutral600,
-            size: 22,
-          ),
+          Icon(Icons.tune_rounded, color: AppColors.neutral600, size: 22),
         ],
       ),
     );

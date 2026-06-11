@@ -48,8 +48,7 @@ const Map<String, String> kCategoryDescriptions = {
       'agua?',
   'aire-acondicionado':
       'Instalación, mantenimiento, reparación o mudar/trasladar tu equipo.',
-  'piscinas':
-      '¿Necesitas limpiar, mantener o reparar tu piscina?',
+  'piscinas': '¿Necesitas limpiar, mantener o reparar tu piscina?',
   'jardineria':
       '¿Necesitas cortar el pasto, arreglar algún terreno o decorar tu jardín?',
   'contratista-construccion':
@@ -61,10 +60,8 @@ const Map<String, String> kCategoryDescriptions = {
       '¿Querés instalar cámaras, alarmas o reforzar la seguridad de tu hogar?',
   'azulejista':
       '¿Necesitas colocar o reparar azulejos en baños, cocinas o paredes?',
-  'pisos-baldosas':
-      '¿Buscas instalar o reparar pisos y baldosas en tu hogar?',
-  'diseno-interiores':
-      '¿Querés renovar y decorar los espacios de tu hogar?',
+  'pisos-baldosas': '¿Buscas instalar o reparar pisos y baldosas en tu hogar?',
+  'diseno-interiores': '¿Querés renovar y decorar los espacios de tu hogar?',
   'iluminacion':
       '¿Necesitas instalar o mejorar la iluminación de tus ambientes?',
   'herrero':

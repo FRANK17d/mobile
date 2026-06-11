@@ -15,13 +15,10 @@ void showAppMenuSheet(BuildContext context) {
           const _AppMenuFullScreen(),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          )),
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
           child: child,
         );
       },

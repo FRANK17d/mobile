@@ -58,13 +58,13 @@ class PrimaryButton extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppColors.textOnPrimary),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.textOnPrimary,
+                  ),
                 ),
               )
             : Row(
-                mainAxisSize:
-                    fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
@@ -133,13 +133,11 @@ class SecondaryButton extends StatelessWidget {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               )
             : Row(
-                mainAxisSize:
-                    fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
