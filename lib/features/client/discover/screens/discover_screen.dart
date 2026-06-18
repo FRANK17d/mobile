@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/buttons/gradient_pill_button.dart';
+import '../../../auth/screens/provider_registration_screen.dart';
+import '../../../auth/services/auth_store.dart';
 import '../../home/widgets/social_media_section.dart';
 import '../../home/widgets/success_stories_section.dart';
 import '../../how_it_works/screens/how_it_works_screen.dart';
@@ -401,7 +405,18 @@ class _BecomeProviderCard extends StatelessWidget {
           _OutlinedPillButton(
             label: 'Gana dinero con Toke+',
             onTap: () {
-              // TODO: navegar al registro de prestador de servicios.
+              if (!AuthStore.instance.value.isAuthenticated) {
+                context.push(AppRoutes.login);
+                return;
+              }
+
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ProviderRegistrationScreen(
+                    convertToTechnician: true,
+                  ),
+                ),
+              );
             },
           ),
         ],

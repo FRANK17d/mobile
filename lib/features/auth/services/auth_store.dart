@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/services/notification_service.dart';
+import '../../../core/services/realtime_service.dart';
+
 /// Snapshot inmutable del estado de sesión en memoria.
 @immutable
 class AuthSnapshot {
@@ -34,10 +37,15 @@ class AuthStore {
   /// Marca la sesión como activa, opcionalmente con el perfil ya cargado.
   void setAuthenticated(Map<String, dynamic>? profile) {
     notifier.value = AuthSnapshot(isAuthenticated: true, profile: profile);
+    // Abrir la conexión realtime (fire-and-forget) con el token actual.
+    RealtimeService.instance.connect();
+    NotificationService.instance.init();
   }
 
   /// Limpia el estado: usado al cerrar sesión o cuando no hay sesión activa.
   void setUnauthenticated() {
     notifier.value = const AuthSnapshot(isAuthenticated: false);
+    NotificationService.instance.dispose();
+    RealtimeService.instance.disconnect();
   }
 }

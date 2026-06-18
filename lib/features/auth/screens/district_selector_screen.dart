@@ -4,28 +4,48 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../services/district_service.dart';
 
-/// Pantalla de seleccion de distrito de Trujillo.
-/// Solo muestra los 11 distritos de la provincia de Trujillo.
-class DistrictSelectorScreen extends StatelessWidget {
+/// Pantalla de selección de distrito.
+/// Carga los distritos activos desde la tabla `districts` (InsForge) en vez
+/// de una lista hardcodeada. Devuelve el [District] seleccionado.
+class DistrictSelectorScreen extends StatefulWidget {
   const DistrictSelectorScreen({super.key, this.currentSelection});
 
-  final String? currentSelection;
+  final District? currentSelection;
 
-  /// Los 11 distritos de la provincia de Trujillo
-  static const List<String> _districts = [
-    'Trujillo',
-    'El Porvenir',
-    'Florencia de Mora',
-    'Huanchaco',
-    'La Esperanza',
-    'Laredo',
-    'Moche',
-    'Poroto',
-    'Salaverry',
-    'Simbal',
-    'Víctor Larco Herrera',
-  ];
+  @override
+  State<DistrictSelectorScreen> createState() => _DistrictSelectorScreenState();
+}
+
+class _DistrictSelectorScreenState extends State<DistrictSelectorScreen> {
+  final DistrictService _service = DistrictService();
+
+  List<District> _districts = const [];
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
+
+    final districts = await _service.getActiveDistricts();
+
+    if (!mounted) return;
+    setState(() {
+      _districts = districts;
+      _loading = false;
+      _error = districts.isEmpty;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,78 +113,108 @@ class DistrictSelectorScreen extends StatelessWidget {
                 ),
               ),
 
-              // ── Chips de distritos ──
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screenPaddingH,
-                    AppSpacing.lg,
-                    AppSpacing.screenPaddingH,
-                    AppSpacing.xxl,
-                  ),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 12,
-                    children: _districts.map((district) {
-                      final isSelected = district == currentSelection;
+              // ── Contenido ──
+              Expanded(child: _buildContent()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                      return Semantics(
-                        button: true,
-                        selected: isSelected,
-                        label: 'Distrito $district',
-                        child: GestureDetector(
-                          onTap: () {
-                            final navigator = Navigator.of(context);
-                            // Retornar seleccion tras breve delay visual
-                            Future.delayed(
-                              const Duration(milliseconds: 150),
-                              () {
-                                if (!context.mounted) return;
-                                navigator.pop(district);
-                              },
-                            );
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 11,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFFFFF0ED)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusFull,
-                              ),
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFFE8836B)
-                                    : AppColors.neutral300,
-                                width: isSelected ? 1.5 : 1,
-                              ),
-                            ),
-                            child: Text(
-                              district,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: isSelected
-                                    ? const Color(0xFFE8836B)
-                                    : AppColors.textPrimary,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+  Widget _buildContent() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.wifi_off_rounded,
+                size: 40,
+                color: AppColors.textTertiary,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'No se pudieron cargar los distritos.',
+                textAlign: TextAlign.center,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
                 ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextButton(
+                onPressed: _load,
+                child: const Text('Reintentar'),
               ),
             ],
           ),
         ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenPaddingH,
+        AppSpacing.lg,
+        AppSpacing.screenPaddingH,
+        AppSpacing.xxl,
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 12,
+        children: _districts.map((district) {
+          final isSelected = district.id == widget.currentSelection?.id;
+
+          return Semantics(
+            button: true,
+            selected: isSelected,
+            label: 'Distrito ${district.name}',
+            child: GestureDetector(
+              onTap: () {
+                final navigator = Navigator.of(context);
+                // Retornar selección tras breve delay visual
+                Future.delayed(const Duration(milliseconds: 150), () {
+                  if (!context.mounted) return;
+                  navigator.pop(district);
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFFFF0ED) : Colors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFFE8836B)
+                        : AppColors.neutral300,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  district.name,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isSelected
+                        ? const Color(0xFFE8836B)
+                        : AppColors.textPrimary,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

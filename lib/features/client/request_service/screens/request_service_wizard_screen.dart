@@ -4,18 +4,27 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../../core/widgets/buttons/gradient_pill_button.dart';
+import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../../auth/screens/district_selector_screen.dart';
+import '../../../auth/services/district_service.dart';
+import '../../home/services/category_service.dart';
+import '../services/request_service.dart';
 import 'request_result_screen.dart';
 import '../widgets/request_widgets.dart';
 
 /// Modo de fecha elegido en el paso 3.
 enum _DateMode { flexible, choose, urgent }
 
-/// Flujo "Pedir un servicio" en 4 pasos (descripción, ubicación, fecha,
-/// resumen). Solo vistas conectadas: el estado se mantiene local y "Publicar"
-/// abre la pantalla de resultado. Aún sin lógica de backend.
+/// Flujo "Pedir un servicio" en 4 pasos (descripción+categoría, ubicación,
+/// fecha, resumen). Publica un pedido real (queda en revisión del admin).
 class RequestServiceWizardScreen extends StatefulWidget {
-  const RequestServiceWizardScreen({super.key});
+  const RequestServiceWizardScreen({super.key, this.initialCategoryName});
+
+  /// Nombre de categoría preseleccionada (p.ej. al entrar desde el carrusel del
+  /// home). Se resuelve contra las categorías cargadas de la BD.
+  final String? initialCategoryName;
 
   @override
   State<RequestServiceWizardScreen> createState() =>
@@ -30,16 +39,76 @@ class _RequestServiceWizardScreenState
   final _descriptionController = TextEditingController();
   final _barrioController = TextEditingController();
 
-  final String _city = 'Mariano Roque Alonso';
+  final CategoryService _categoryService = CategoryService();
+  final RequestService _requestService = RequestService();
+  final LocationService _locationService = LocationService();
+
+  List<ServiceCategory> _categories = const [];
+  ServiceCategory? _selectedCategory;
+  District? _selectedDistrict;
+
   _DateMode _dateMode = _DateMode.flexible;
   int _selectedDay = 0;
   bool _needsInvoice = false;
+  bool _publishing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final cats = await _categoryService.getActiveCategories();
+    if (!mounted) return;
+    setState(() {
+      _categories = cats;
+      // Resolver la categoría preseleccionada (por nombre) contra la lista real.
+      final name = widget.initialCategoryName;
+      if (name != null && _selectedCategory == null) {
+        for (final c in cats) {
+          if (c.name == name) {
+            _selectedCategory = c;
+            break;
+          }
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _barrioController.dispose();
     super.dispose();
+  }
+
+  /// Valida el paso actual antes de avanzar/publicar.
+  bool _validateStep() {
+    switch (_step) {
+      case 1:
+        if (_selectedCategory == null) {
+          showAppToast(context,
+              message: 'Elige una categoría.', type: ToastType.warning);
+          return false;
+        }
+        if (_descriptionController.text.trim().length < 10) {
+          showAppToast(context,
+              message: 'Describe tu pedido (mínimo 10 caracteres).',
+              type: ToastType.warning);
+          return false;
+        }
+        return true;
+      case 2:
+        if (_selectedDistrict == null) {
+          showAppToast(context,
+              message: 'Elige tu distrito.', type: ToastType.warning);
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
   }
 
   void _onBack() {
@@ -51,12 +120,58 @@ class _RequestServiceWizardScreenState
   }
 
   void _onNext() {
+    if (_publishing) return;
+    if (!_validateStep()) return;
     if (_step < _totalSteps) {
       setState(() => _step++);
     } else {
+      _publish();
+    }
+  }
+
+  /// Convierte el modo de fecha en una fecha preferida (o null si es flexible).
+  DateTime? _preferredDate() {
+    switch (_dateMode) {
+      case _DateMode.flexible:
+        return null;
+      case _DateMode.urgent:
+        return DateTime.now();
+      case _DateMode.choose:
+        return DateTime.now().add(Duration(days: _selectedDay));
+    }
+  }
+
+  Future<void> _publish() async {
+    setState(() => _publishing = true);
+
+    // GPS best-effort: si se niega, el pedido se publica igual (sin coords).
+    final pos = await _locationService.getCurrentLatLng();
+
+    final result = await _requestService.createRequest(
+      categoryId: _selectedCategory!.id,
+      districtId: _selectedDistrict!.id,
+      title: _selectedCategory!.name,
+      description: _descriptionController.text.trim(),
+      preferredDate: _preferredDate(),
+      needsInvoice: _needsInvoice,
+      latitude: pos?.latitude,
+      longitude: pos?.longitude,
+      address: _barrioController.text.trim().isEmpty
+          ? null
+          : _barrioController.text.trim(),
+    );
+
+    if (!mounted) return;
+    setState(() => _publishing = false);
+
+    if (result.success) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const RequestResultScreen()),
       );
+    } else {
+      showAppToast(context,
+          message: result.message ?? 'No se pudo publicar el pedido.',
+          type: ToastType.error);
     }
   }
 
@@ -120,7 +235,9 @@ class _RequestServiceWizardScreenState
               // ── Botón inferior ──
               RequestBottomBar(
                 child: GradientPillButton(
-                  label: _step < _totalSteps ? 'Siguiente' : 'Publicar',
+                  label: _publishing
+                      ? 'Publicando...'
+                      : (_step < _totalSteps ? 'Siguiente' : 'Publicar'),
                   onTap: _onNext,
                 ),
               ),
@@ -131,15 +248,79 @@ class _RequestServiceWizardScreenState
     );
   }
 
+  void _openCategoryPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                'Elige una categoría',
+                style: AppTypography.titleLarge.copyWith(
+                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: _categories
+                    .map(
+                      (c) => ListTile(
+                        leading: Text(c.emoji,
+                            style: const TextStyle(fontSize: 22)),
+                        title: Text(c.name, style: AppTypography.bodyLarge),
+                        trailing: _selectedCategory?.id == c.id
+                            ? const Icon(Icons.check, color: AppColors.primary)
+                            : null,
+                        onTap: () {
+                          setState(() => _selectedCategory = c);
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDistrictPicker() async {
+    final result = await Navigator.of(context).push<District>(
+      MaterialPageRoute(
+        builder: (_) =>
+            DistrictSelectorScreen(currentSelection: _selectedDistrict),
+      ),
+    );
+    if (result != null) {
+      setState(() => _selectedDistrict = result);
+    }
+  }
+
   Widget _buildStep() {
     switch (_step) {
       case 1:
-        return _DescriptionStep(controller: _descriptionController);
+        return _DescriptionStep(
+          controller: _descriptionController,
+          selectedCategory: _selectedCategory,
+          onPickCategory: _openCategoryPicker,
+        );
       case 2:
         return _LocationStep(
-          city: _city,
+          districtName: _selectedDistrict?.name,
           barrioController: _barrioController,
-          onCityTap: () {},
+          onDistrictTap: _openDistrictPicker,
         );
       case 3:
         return _DateStep(
@@ -160,9 +341,15 @@ class _RequestServiceWizardScreenState
 // Paso 1 — Descripción
 // ═══════════════════════════════════════════════════════════
 class _DescriptionStep extends StatelessWidget {
-  const _DescriptionStep({required this.controller});
+  const _DescriptionStep({
+    required this.controller,
+    required this.selectedCategory,
+    required this.onPickCategory,
+  });
 
   final TextEditingController controller;
+  final ServiceCategory? selectedCategory;
+  final VoidCallback onPickCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +363,19 @@ class _DescriptionStep extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
+
+        // ── Categoría ──
+        _FieldLabel('Categoría'),
+        const SizedBox(height: AppSpacing.xs),
+        FakeSelectField(
+          value: selectedCategory == null
+              ? 'Elegir categoría'
+              : '${selectedCategory!.emoji} ${selectedCategory!.name}',
+          onTap: onPickCategory,
+        ),
+
+        const SizedBox(height: AppSpacing.lg),
         Row(
           children: [
             Expanded(
@@ -262,14 +461,14 @@ class _PhotoButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 class _LocationStep extends StatelessWidget {
   const _LocationStep({
-    required this.city,
+    required this.districtName,
     required this.barrioController,
-    required this.onCityTap,
+    required this.onDistrictTap,
   });
 
-  final String city;
+  final String? districtName;
   final TextEditingController barrioController;
-  final VoidCallback onCityTap;
+  final VoidCallback onDistrictTap;
 
   @override
   Widget build(BuildContext context) {
@@ -292,22 +491,25 @@ class _LocationStep extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xl),
 
-        // ── Ciudad ──
+        // ── Distrito ──
         Row(
           children: [
-            Expanded(child: _FieldLabel('Ciudad')),
+            Expanded(child: _FieldLabel('Distrito')),
             const HelpBadge(),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        FakeSelectField(value: city, onTap: onCityTap),
+        FakeSelectField(
+          value: districtName ?? 'Seleccione su distrito',
+          onTap: onDistrictTap,
+        ),
 
         const SizedBox(height: AppSpacing.lg),
 
-        // ── Barrio (opcional) ──
-        _FieldLabel('Barrio', optional: true),
+        // ── Dirección/referencia (opcional) ──
+        _FieldLabel('Dirección o referencia', optional: true),
         const SizedBox(height: AppSpacing.xs),
-        _PlainInput(controller: barrioController, hint: 'Ej: La concordia'),
+        _PlainInput(controller: barrioController, hint: 'Ej: Av. España 123'),
       ],
     );
   }

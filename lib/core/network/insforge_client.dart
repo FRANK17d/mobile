@@ -50,6 +50,32 @@ class InsForgeClient {
     return await _storage.read(key: _refreshTokenKey);
   }
 
+  /// Extrae el `sub` (user id) del JWT de acceso, sin verificar firma.
+  /// Devuelve null si no hay sesión o el token no es legible.
+  Future<String?> getCurrentUserId() async {
+    final token = await getAccessToken();
+    if (token == null || token.isEmpty) return null;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      var payload = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      switch (payload.length % 4) {
+        case 2:
+          payload += '==';
+          break;
+        case 3:
+          payload += '=';
+          break;
+      }
+      final decoded = jsonDecode(utf8.decode(base64.decode(payload)))
+          as Map<String, dynamic>;
+      return decoded['sub'] as String?;
+    } catch (e) {
+      debugPrint('getCurrentUserId decode error: $e');
+      return null;
+    }
+  }
+
   /// Refresca la sesion con lock para evitar llamadas concurrentes.
   Future<bool> refreshSession() async {
     // Si ya hay un refresh en progreso, esperar ese resultado.
