@@ -68,7 +68,12 @@ class AvailableRequest {
 
 /// Resultado de postular a un pedido.
 class ApplyResult {
-  const ApplyResult({required this.success, this.balance, this.message, this.error});
+  const ApplyResult({
+    required this.success,
+    this.balance,
+    this.message,
+    this.error,
+  });
 
   final bool success;
   final int? balance;
@@ -90,10 +95,7 @@ class TechnicianFeedService {
     try {
       final response = await _client.post(
         '/api/database/rpc/get_available_requests',
-        body: {
-          'p_all_categories': allCategories,
-          'p_all_zones': allZones,
-        },
+        body: {'p_all_categories': allCategories, 'p_all_zones': allZones},
         requireAuth: true,
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

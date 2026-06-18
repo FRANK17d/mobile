@@ -45,7 +45,11 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: EdgeInsets.only(
-                  top: topPadding + 16, left: 20, right: 20, bottom: 28),
+                top: topPadding + 16,
+                left: 20,
+                right: 20,
+                bottom: 28,
+              ),
               decoration: const BoxDecoration(color: Color(0xFF1D2939)),
               child: Row(
                 children: [
@@ -62,7 +66,9 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
                     onTap: () => context.push(AppRoutes.login),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(20),
@@ -91,8 +97,11 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.chat_bubble_outline_rounded,
-                          size: 56, color: AppColors.neutral300),
+                      Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 56,
+                        color: AppColors.neutral300,
+                      ),
                       SizedBox(height: 12),
                       Text(
                         'Inicia sesión para ver tus mensajes',
@@ -144,10 +153,8 @@ class _ConversationsViewState extends State<_ConversationsView> {
   Future<void> _openThread(Conversation c) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatThreadScreen(
-          conversationId: c.id,
-          title: c.otherFirstName,
-        ),
+        builder: (_) =>
+            ChatThreadScreen(conversationId: c.id, title: c.otherFirstName),
       ),
     );
     _load(); // refrescar último mensaje al volver
@@ -168,19 +175,22 @@ class _ConversationsViewState extends State<_ConversationsView> {
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _conversations.isEmpty
-                ? _empty()
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: ListView.separated(
-                      itemCount: _conversations.length,
-                      separatorBuilder: (_, _) => const Divider(
-                          height: 1, color: AppColors.neutral200, indent: 80),
-                      itemBuilder: (_, i) => _ConversationTile(
-                        conversation: _conversations[i],
-                        onTap: () => _openThread(_conversations[i]),
-                      ),
-                    ),
+            ? _empty()
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView.separated(
+                  itemCount: _conversations.length,
+                  separatorBuilder: (_, _) => const Divider(
+                    height: 1,
+                    color: AppColors.neutral200,
+                    indent: 80,
                   ),
+                  itemBuilder: (_, i) => _ConversationTile(
+                    conversation: _conversations[i],
+                    onTap: () => _openThread(_conversations[i]),
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -191,20 +201,26 @@ class _ConversationsViewState extends State<_ConversationsView> {
         SizedBox(height: MediaQuery.of(context).size.height * 0.25),
         Column(
           children: [
-            Icon(Icons.chat_bubble_outline_rounded,
-                size: 56, color: AppColors.neutral300),
+            Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 56,
+              color: AppColors.neutral300,
+            ),
             const SizedBox(height: 12),
             Text(
               'Aún no tienes conversaciones',
               style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.textSecondary, fontSize: 14),
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Aparecerán cuando un técnico postule a tu pedido.',
               textAlign: TextAlign.center,
-              style: AppTypography.bodyMedium
-                  .copyWith(color: AppColors.textTertiary),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textTertiary,
+              ),
             ),
           ],
         ),
@@ -228,8 +244,9 @@ class _ConversationTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 26,
         backgroundColor: AppColors.neutral200,
-        backgroundImage:
-            c.otherAvatarUrl != null ? NetworkImage(c.otherAvatarUrl!) : null,
+        backgroundImage: c.otherAvatarUrl != null
+            ? NetworkImage(c.otherAvatarUrl!)
+            : null,
         child: c.otherAvatarUrl == null
             ? const Icon(Icons.person, color: AppColors.neutral500)
             : null,
@@ -245,9 +262,12 @@ class _ConversationTile extends StatelessWidget {
               ),
             ),
           ),
-          Text('${c.categoryEmoji} ${c.requestTitle}',
-              style: AppTypography.labelSmall
-                  .copyWith(color: AppColors.textTertiary)),
+          Text(
+            '${c.categoryEmoji} ${c.requestTitle}',
+            style: AppTypography.labelSmall.copyWith(
+              color: AppColors.textTertiary,
+            ),
+          ),
         ],
       ),
       subtitle: Padding(
@@ -256,7 +276,9 @@ class _ConversationTile extends StatelessWidget {
           c.lastBody ?? 'Conversación iniciada',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
       ),
     );

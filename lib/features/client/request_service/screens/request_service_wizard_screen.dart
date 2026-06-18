@@ -88,21 +88,29 @@ class _RequestServiceWizardScreenState
     switch (_step) {
       case 1:
         if (_selectedCategory == null) {
-          showAppToast(context,
-              message: 'Elige una categoría.', type: ToastType.warning);
+          showAppToast(
+            context,
+            message: 'Elige una categoría.',
+            type: ToastType.warning,
+          );
           return false;
         }
         if (_descriptionController.text.trim().length < 10) {
-          showAppToast(context,
-              message: 'Describe tu pedido (mínimo 10 caracteres).',
-              type: ToastType.warning);
+          showAppToast(
+            context,
+            message: 'Describe tu pedido (mínimo 10 caracteres).',
+            type: ToastType.warning,
+          );
           return false;
         }
         return true;
       case 2:
         if (_selectedDistrict == null) {
-          showAppToast(context,
-              message: 'Elige tu distrito.', type: ToastType.warning);
+          showAppToast(
+            context,
+            message: 'Elige tu distrito.',
+            type: ToastType.warning,
+          );
           return false;
         }
         return true;
@@ -169,9 +177,11 @@ class _RequestServiceWizardScreenState
         MaterialPageRoute<void>(builder: (_) => const RequestResultScreen()),
       );
     } else {
-      showAppToast(context,
-          message: result.message ?? 'No se pudo publicar el pedido.',
-          type: ToastType.error);
+      showAppToast(
+        context,
+        message: result.message ?? 'No se pudo publicar el pedido.',
+        type: ToastType.error,
+      );
     }
   }
 
@@ -275,8 +285,10 @@ class _RequestServiceWizardScreenState
                 children: _categories
                     .map(
                       (c) => ListTile(
-                        leading: Text(c.emoji,
-                            style: const TextStyle(fontSize: 22)),
+                        leading: Text(
+                          c.emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
                         title: Text(c.name, style: AppTypography.bodyLarge),
                         trailing: _selectedCategory?.id == c.id
                             ? const Icon(Icons.check, color: AppColors.primary)

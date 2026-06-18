@@ -148,10 +148,7 @@ class _DistrictSelectorScreenState extends State<DistrictSelectorScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              TextButton(
-                onPressed: _load,
-                child: const Text('Reintentar'),
-              ),
+              TextButton(onPressed: _load, child: const Text('Reintentar')),
             ],
           ),
         ),
@@ -206,9 +203,7 @@ class _DistrictSelectorScreenState extends State<DistrictSelectorScreen> {
                     color: isSelected
                         ? const Color(0xFFE8836B)
                         : AppColors.textPrimary,
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.w400,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ),

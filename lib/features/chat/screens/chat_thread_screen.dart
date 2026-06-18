@@ -130,26 +130,22 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _messages.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Escribe el primer mensaje 👋',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textTertiary,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: _scroll,
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          itemCount: _messages.length,
-                          itemBuilder: (_, i) => _Bubble(message: _messages[i]),
+                  ? Center(
+                      child: Text(
+                        'Escribe el primer mensaje 👋',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textTertiary,
                         ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: _messages.length,
+                      itemBuilder: (_, i) => _Bubble(message: _messages[i]),
+                    ),
             ),
-            _Composer(
-              controller: _input,
-              sending: _sending,
-              onSend: _send,
-            ),
+            _Composer(controller: _input, sending: _sending, onSend: _send),
           ],
         ),
       ),
@@ -227,8 +223,10 @@ class _Composer extends StatelessWidget {
                   hintText: 'Escribe un mensaje...',
                   filled: true,
                   fillColor: AppColors.backgroundTertiary,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
@@ -255,7 +253,11 @@ class _Composer extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                    : const Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
               ),
             ),
           ],

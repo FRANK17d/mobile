@@ -74,14 +74,18 @@ class _RequestApplicantsScreenState extends State<RequestApplicantsScreen> {
     setState(() => _accepting = null);
 
     if (ok) {
-      showAppToast(context,
-          message: 'Elegiste a ${a.firstName}. ¡Coordina el trabajo!',
-          type: ToastType.success);
+      showAppToast(
+        context,
+        message: 'Elegiste a ${a.firstName}. ¡Coordina el trabajo!',
+        type: ToastType.success,
+      );
       Navigator.of(context).pop(true);
     } else {
-      showAppToast(context,
-          message: 'No se pudo asignar. Intenta de nuevo.',
-          type: ToastType.error);
+      showAppToast(
+        context,
+        message: 'No se pudo asignar. Intenta de nuevo.',
+        type: ToastType.error,
+      );
     }
   }
 
@@ -107,24 +111,24 @@ class _RequestApplicantsScreenState extends State<RequestApplicantsScreen> {
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _applicants.isEmpty
-                ? _empty()
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
-                      itemCount: _applicants.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (_, i) => _ApplicantCard(
-                        applicant: _applicants[i],
-                        accepting: _accepting == _applicants[i].applicationId,
-                        // Si ya hay uno aceptado, deshabilitar el resto.
-                        disabled: anyAccepted &&
-                            _applicants[i].status != 'accepted',
-                        onAccept: () => _accept(_applicants[i]),
-                      ),
-                    ),
+            ? _empty()
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
+                  itemCount: _applicants.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (_, i) => _ApplicantCard(
+                    applicant: _applicants[i],
+                    accepting: _accepting == _applicants[i].applicationId,
+                    // Si ya hay uno aceptado, deshabilitar el resto.
+                    disabled:
+                        anyAccepted && _applicants[i].status != 'accepted',
+                    onAccept: () => _accept(_applicants[i]),
                   ),
+                ),
+              ),
       ),
     );
   }
@@ -176,9 +180,10 @@ class _ApplicantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAccepted = applicant.status == 'accepted';
-    final fullName = [applicant.firstName, applicant.lastName ?? '']
-        .where((s) => s.isNotEmpty)
-        .join(' ');
+    final fullName = [
+      applicant.firstName,
+      applicant.lastName ?? '',
+    ].where((s) => s.isNotEmpty).join(' ');
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -220,8 +225,11 @@ class _ApplicantCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded,
-                            size: 16, color: Color(0xFFFFC107)),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: Color(0xFFFFC107),
+                        ),
                         const SizedBox(width: 2),
                         Text(
                           (applicant.avgRating ?? 0).toStringAsFixed(1),
@@ -265,10 +273,13 @@ class _ApplicantCard extends StatelessWidget {
             width: double.infinity,
             height: 44,
             child: ElevatedButton(
-              onPressed: (disabled || isAccepted || accepting) ? null : onAccept,
+              onPressed: (disabled || isAccepted || accepting)
+                  ? null
+                  : onAccept,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isAccepted ? const Color(0xFF2ECC71) : AppColors.primary,
+                backgroundColor: isAccepted
+                    ? const Color(0xFF2ECC71)
+                    : AppColors.primary,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.neutral300,
                 shape: RoundedRectangleBorder(
@@ -280,12 +291,15 @@ class _ApplicantCard extends StatelessWidget {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text(
                       isAccepted ? 'Elegido ✓' : 'Elegir este técnico',
-                      style: AppTypography.buttonMedium
-                          .copyWith(fontWeight: FontWeight.w700),
+                      style: AppTypography.buttonMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
             ),
           ),

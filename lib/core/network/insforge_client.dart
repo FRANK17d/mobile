@@ -67,8 +67,9 @@ class InsForgeClient {
           payload += '=';
           break;
       }
-      final decoded = jsonDecode(utf8.decode(base64.decode(payload)))
-          as Map<String, dynamic>;
+      final decoded =
+          jsonDecode(utf8.decode(base64.decode(payload)))
+              as Map<String, dynamic>;
       return decoded['sub'] as String?;
     } catch (e) {
       debugPrint('getCurrentUserId decode error: $e');

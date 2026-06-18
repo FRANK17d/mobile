@@ -47,19 +47,23 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen> {
 
     // Nuevos pedidos publicados → refrescar feed.
     rt.subscribe('requests');
-    _rtUnsub.add(rt.on('new_open_request', (_) {
-      if (mounted) _load();
-    }));
+    _rtUnsub.add(
+      rt.on('new_open_request', (_) {
+        if (mounted) _load();
+      }),
+    );
 
     // Saldo en vivo.
     final uid = await InsForgeClient().getCurrentUserId();
     if (uid != null) {
       _walletChannel = 'wallet:$uid';
       rt.subscribe(_walletChannel!);
-      _rtUnsub.add(rt.on('balance_changed', (payload) {
-        final b = (payload['balance'] as num?)?.toInt();
-        if (mounted && b != null) setState(() => _balance = b);
-      }));
+      _rtUnsub.add(
+        rt.on('balance_changed', (payload) {
+          final b = (payload['balance'] as num?)?.toInt();
+          if (mounted && b != null) setState(() => _balance = b);
+        }),
+      );
     }
   }
 
@@ -122,19 +126,23 @@ class _ProviderOrdersScreenState extends State<ProviderOrdersScreen> {
     setState(() => _applying.remove(req.id));
 
     if (result.success) {
-      showAppToast(context,
-          message: result.message ?? 'Postulación enviada.',
-          type: ToastType.success);
+      showAppToast(
+        context,
+        message: result.message ?? 'Postulación enviada.',
+        type: ToastType.success,
+      );
       setState(() {
         _requests = _requests.where((r) => r.id != req.id).toList();
         if (result.balance != null) _balance = result.balance!;
       });
     } else {
-      showAppToast(context,
-          message: result.message ?? 'No se pudo postular.',
-          type: result.error == 'insufficient_credits'
-              ? ToastType.warning
-              : ToastType.error);
+      showAppToast(
+        context,
+        message: result.message ?? 'No se pudo postular.',
+        type: result.error == 'insufficient_credits'
+            ? ToastType.warning
+            : ToastType.error,
+      );
     }
   }
 
@@ -482,8 +490,7 @@ class _RequestCard extends StatelessWidget {
           // ── Categoría + distancia ──
           Row(
             children: [
-              Text(request.categoryEmoji,
-                  style: const TextStyle(fontSize: 20)),
+              Text(request.categoryEmoji, style: const TextStyle(fontSize: 20)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -514,7 +521,10 @@ class _RequestCard extends StatelessWidget {
             request.description,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.nunito(fontSize: 14, color: AppColors.neutral600),
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              color: AppColors.neutral600,
+            ),
           ),
 
           const SizedBox(height: 8),
@@ -522,23 +532,33 @@ class _RequestCard extends StatelessWidget {
           // ── Distrito ──
           Row(
             children: [
-              Icon(Icons.location_on_outlined,
-                  size: 16, color: AppColors.neutral500),
+              Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: AppColors.neutral500,
+              ),
               const SizedBox(width: 4),
               Text(
                 request.districtName,
                 style: GoogleFonts.nunito(
-                    fontSize: 13, color: AppColors.neutral500),
+                  fontSize: 13,
+                  color: AppColors.neutral500,
+                ),
               ),
               if (request.needsInvoice) ...[
                 const SizedBox(width: 12),
-                Icon(Icons.receipt_long_outlined,
-                    size: 16, color: AppColors.neutral500),
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 16,
+                  color: AppColors.neutral500,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'Factura',
                   style: GoogleFonts.nunito(
-                      fontSize: 13, color: AppColors.neutral500),
+                    fontSize: 13,
+                    color: AppColors.neutral500,
+                  ),
                 ),
               ],
             ],
@@ -617,11 +637,12 @@ class _PostularSheetState extends State<_PostularSheet> {
 
   void _submit() {
     final msg = _msgController.text.trim();
-    final price = num.tryParse(_priceController.text.trim().replaceAll(',', '.'));
-    Navigator.of(context).pop(_PostularData(
-      message: msg.isEmpty ? null : msg,
-      price: price,
-    ));
+    final price = num.tryParse(
+      _priceController.text.trim().replaceAll(',', '.'),
+    );
+    Navigator.of(
+      context,
+    ).pop(_PostularData(message: msg.isEmpty ? null : msg, price: price));
   }
 
   @override
@@ -636,12 +657,18 @@ class _PostularSheetState extends State<_PostularSheet> {
           Text(
             'Postular a ${widget.categoryName}',
             style: GoogleFonts.nunito(
-                fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF1A1A1A)),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF1A1A1A),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             'Cuéntale al cliente por qué puedes ayudarlo y tu presupuesto. Cuesta 1 crédito.',
-            style: GoogleFonts.nunito(fontSize: 13, color: AppColors.neutral600),
+            style: GoogleFonts.nunito(
+              fontSize: 13,
+              color: AppColors.neutral600,
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -690,7 +717,9 @@ class _PostularSheetState extends State<_PostularSheet> {
               child: Text(
                 'Enviar postulación',
                 style: GoogleFonts.nunito(
-                    fontSize: 15, fontWeight: FontWeight.w700),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

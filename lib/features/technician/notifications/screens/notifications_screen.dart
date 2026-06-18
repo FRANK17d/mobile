@@ -91,7 +91,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         body: Column(
           children: [
-            const Divider(height: 1, thickness: 1, color: AppColors.borderLight),
+            const Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.borderLight,
+            ),
 
             // Switch "Recibir nuevos pedidos"
             Padding(
@@ -101,8 +105,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.notifications_active_outlined,
-                      size: 26, color: AppColors.secondary),
+                  const Icon(
+                    Icons.notifications_active_outlined,
+                    size: 26,
+                    color: AppColors.secondary,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -202,10 +209,14 @@ class _NotificationCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? Colors.white : AppColors.primary.withValues(alpha: 0.04),
+          color: isRead
+              ? Colors.white
+              : AppColors.primary.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isRead ? AppColors.borderLight : AppColors.primary.withValues(alpha: 0.2),
+            color: isRead
+                ? AppColors.borderLight
+                : AppColors.primary.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
@@ -215,11 +226,16 @@ class _NotificationCard extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: isRead ? AppColors.neutral200 : AppColors.primary.withValues(alpha: 0.1),
+                color: isRead
+                    ? AppColors.neutral200
+                    : AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 20,
-                  color: isRead ? AppColors.neutral500 : AppColors.primary),
+              child: Icon(
+                icon,
+                size: 20,
+                color: isRead ? AppColors.neutral500 : AppColors.primary,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -354,8 +370,11 @@ class _EmptyNotifications extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.notifications_none_rounded,
-              size: 56, color: AppColors.neutral500.withValues(alpha: 0.9)),
+          Icon(
+            Icons.notifications_none_rounded,
+            size: 56,
+            color: AppColors.neutral500.withValues(alpha: 0.9),
+          ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             AppStrings.emptyNotifications,

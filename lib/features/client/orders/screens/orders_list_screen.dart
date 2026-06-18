@@ -342,10 +342,8 @@ class _AuthenticatedOrdersViewState extends State<_AuthenticatedOrdersView> {
   Future<void> _openApplicants(MyRequest r) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => RequestApplicantsScreen(
-          requestId: r.id,
-          requestTitle: r.title,
-        ),
+        builder: (_) =>
+            RequestApplicantsScreen(requestId: r.id, requestTitle: r.title),
       ),
     );
     if (changed == true) _load();
@@ -378,8 +376,12 @@ class _AuthenticatedOrdersViewState extends State<_AuthenticatedOrdersView> {
                   : TabBarView(
                       children: [
                         _OrdersTab(
-                          requests: _filter(
-                              {'pending_review', 'open', 'assigned', 'in_progress'}),
+                          requests: _filter({
+                            'pending_review',
+                            'open',
+                            'assigned',
+                            'in_progress',
+                          }),
                           onRefresh: _load,
                           onTap: _openApplicants,
                         ),
@@ -407,21 +409,53 @@ class _AuthenticatedOrdersViewState extends State<_AuthenticatedOrdersView> {
 ({String label, Color color, Color bg}) _statusBadge(String status) {
   switch (status) {
     case 'pending_review':
-      return (label: 'En revisión', color: AppColors.primary, bg: const Color(0xFFFFF0ED));
+      return (
+        label: 'En revisión',
+        color: AppColors.primary,
+        bg: const Color(0xFFFFF0ED),
+      );
     case 'open':
-      return (label: 'Publicado', color: const Color(0xFF2563EB), bg: const Color(0xFFE7EEFD));
+      return (
+        label: 'Publicado',
+        color: const Color(0xFF2563EB),
+        bg: const Color(0xFFE7EEFD),
+      );
     case 'assigned':
-      return (label: 'Asignado', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'Asignado',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'in_progress':
-      return (label: 'En curso', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'En curso',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'completed':
-      return (label: 'Completado', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'Completado',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'cancelled':
-      return (label: 'Cancelado', color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: 'Cancelado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
     case 'rejected':
-      return (label: 'Rechazado', color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: 'Rechazado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
     default:
-      return (label: status, color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: status,
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
   }
 }
 
@@ -483,8 +517,10 @@ class _MyRequestCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(request.categoryEmoji,
-                    style: const TextStyle(fontSize: 18)),
+                Text(
+                  request.categoryEmoji,
+                  style: const TextStyle(fontSize: 18),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -496,8 +532,10 @@ class _MyRequestCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: badge.bg,
                     borderRadius: BorderRadius.circular(12),
@@ -524,8 +562,11 @@ class _MyRequestCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.location_on_outlined,
-                    size: 15, color: AppColors.neutral500),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 15,
+                  color: AppColors.neutral500,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   request.districtName,
@@ -535,8 +576,11 @@ class _MyRequestCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (canViewApplicants) ...[
-                  Icon(Icons.group_outlined,
-                      size: 16, color: AppColors.primary),
+                  Icon(
+                    Icons.group_outlined,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${request.applicationsCount} postul.',
@@ -546,8 +590,11 @@ class _MyRequestCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 2),
-                  const Icon(Icons.chevron_right_rounded,
-                      size: 18, color: AppColors.primary),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
                 ],
               ],
             ),
