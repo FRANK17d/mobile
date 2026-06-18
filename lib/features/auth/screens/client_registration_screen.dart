@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../services/district_service.dart';
 import 'district_selector_screen.dart';
 
 /// Registro de clientes - Flujo de 3 pasos:
@@ -27,7 +28,7 @@ class _ClientRegistrationScreenState extends State<ClientRegistrationScreen> {
   // ── Step 1 controllers ──
   final _nameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  String? _selectedDistrict;
+  District? _selectedDistrict;
 
   // ── Step 2 controllers ──
   final _phoneController = TextEditingController();
@@ -112,7 +113,8 @@ class _ClientRegistrationScreenState extends State<ClientRegistrationScreen> {
       extra: {
         'name': _nameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
-        'district': _selectedDistrict,
+        'district': _selectedDistrict?.name,
+        'districtId': _selectedDistrict?.id,
         'phone': _phoneController.text.replaceAll(' ', '').trim(),
         'email': _emailController.text.trim(),
         'password': _passwordController.text,
@@ -305,8 +307,8 @@ class _Step1PersonalInfo extends StatelessWidget {
 
   final TextEditingController nameController;
   final TextEditingController lastNameController;
-  final String? selectedDistrict;
-  final ValueChanged<String> onDistrictSelected;
+  final District? selectedDistrict;
+  final ValueChanged<District> onDistrictSelected;
   final VoidCallback onChanged;
 
   @override
@@ -374,12 +376,12 @@ class _Step1PersonalInfo extends StatelessWidget {
           Semantics(
             button: true,
             label: selectedDistrict != null
-                ? 'Distrito seleccionado: $selectedDistrict. Toque para cambiar'
+                ? 'Distrito seleccionado: ${selectedDistrict!.name}. Toque para cambiar'
                 : 'Seleccionar distrito',
             child: GestureDetector(
               onTap: () async {
                 FocusScope.of(context).unfocus();
-                final result = await Navigator.of(context).push<String>(
+                final result = await Navigator.of(context).push<District>(
                   MaterialPageRoute(
                     builder: (_) => DistrictSelectorScreen(
                       currentSelection: selectedDistrict,
@@ -406,7 +408,7 @@ class _Step1PersonalInfo extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      selectedDistrict ?? 'Seleccione su distrito',
+                      selectedDistrict?.name ?? 'Seleccione su distrito',
                       style: AppTypography.bodyMedium.copyWith(
                         color: selectedDistrict != null
                             ? AppColors.textPrimary

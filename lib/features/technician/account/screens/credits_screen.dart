@@ -5,6 +5,7 @@ import '../../../../core/constants/app_images.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../services/credit_service.dart';
 
 class CreditsScreen extends StatefulWidget {
   const CreditsScreen({super.key});
@@ -16,8 +17,9 @@ class CreditsScreen extends StatefulWidget {
 class _CreditsScreenState extends State<CreditsScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  final CreditService _creditService = CreditService();
 
-  static const _packages = [
+  static const _fallbackPackages = [
     _CreditPackage(
       credits: 10,
       price: 'S/ 15.00',
@@ -39,6 +41,9 @@ class _CreditsScreenState extends State<CreditsScreen>
     ),
   ];
 
+  List<_CreditPackage> _packages = _fallbackPackages;
+  bool _isLoadingPackages = true;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +51,34 @@ class _CreditsScreenState extends State<CreditsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
+    _loadPackages();
+  }
+
+  Future<void> _loadPackages() async {
+    final packages = await _creditService.getActivePackages();
+    if (!mounted) return;
+
+    setState(() {
+      _packages = packages == null
+          ? _fallbackPackages
+          : List.generate(packages.length, (index) {
+              final pack = packages[index];
+              return _CreditPackage(
+                credits: pack.credits,
+                price: 'S/ ${pack.pricePen.toStringAsFixed(2)}',
+                asset: _assetForIndex(index),
+              );
+            });
+      _isLoadingPackages = false;
+    });
+  }
+
+  String _assetForIndex(int index) {
+    return switch (index % 3) {
+      0 => AppImages.coinPackSmall,
+      1 => AppImages.coinPackMedium,
+      _ => AppImages.coinPackLarge,
+    };
   }
 
   @override
@@ -112,32 +145,73 @@ class _CreditsScreenState extends State<CreditsScreen>
                       controller: _controller,
                       begin: 0.14,
                       end: 0.58,
-                      child: Text(
-                        'Comprar paquetes:',
-                        style: AppTypography.headingSmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Comprar paquetes:',
+                            style: AppTypography.headingSmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (_isLoadingPackages) ...[
+                            const SizedBox(width: 10),
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    ...List.generate(_packages.length, (index) {
-                      final pack = _packages[index];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == _packages.length - 1
-                              ? 0
-                              : AppSpacing.xl,
+                    if (_packages.isEmpty) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      _AnimatedIn(
+                        controller: _controller,
+                        begin: 0.2,
+                        end: 0.72,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusXl,
+                            ),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Text(
+                            'No hay paquetes activos por ahora.',
+                            style: AppTypography.bodyLarge.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
-                        child: _AnimatedIn(
-                          controller: _controller,
-                          begin: 0.2 + (index * 0.08),
-                          end: 0.72 + (index * 0.06),
-                          offset: const Offset(0, 0.22),
-                          child: _CreditPackageCard(package: pack),
-                        ),
-                      );
-                    }),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      ...List.generate(_packages.length, (index) {
+                        final pack = _packages[index];
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == _packages.length - 1
+                                ? 0
+                                : AppSpacing.xl,
+                          ),
+                          child: _AnimatedIn(
+                            controller: _controller,
+                            begin: 0.2 + (index * 0.08),
+                            end: 0.72 + (index * 0.06),
+                            offset: const Offset(0, 0.22),
+                            child: _CreditPackageCard(package: pack),
+                          ),
+                        );
+                      }),
+                    ],
                     const SizedBox(height: 96),
                     _AnimatedIn(
                       controller: _controller,

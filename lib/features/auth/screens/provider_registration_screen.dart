@@ -8,6 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/feedback/app_toast.dart';
+import '../../client/home/services/category_service.dart';
+import '../services/district_service.dart';
 import 'district_selector_screen.dart';
 
 /// Registro de prestadores de servicio - Flujo de 5 pasos:
@@ -17,7 +19,14 @@ import 'district_selector_screen.dart';
 /// Step 4: Categorías de servicio (max 2)
 /// Step 5: Aceptar términos y finalizar
 class ProviderRegistrationScreen extends StatefulWidget {
-  const ProviderRegistrationScreen({super.key});
+  const ProviderRegistrationScreen({
+    super.key,
+    this.convertToTechnician = false,
+  });
+
+  /// Cuando es true, completa el perfil técnico de la cuenta autenticada actual
+  /// en vez de crear un usuario nuevo con email/contraseña.
+  final bool convertToTechnician;
 
   @override
   State<ProviderRegistrationScreen> createState() =>
@@ -34,7 +43,7 @@ class _ProviderRegistrationScreenState
   final _nameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _dniController = TextEditingController();
-  String? _selectedDistrict;
+  District? _selectedDistrict;
 
   // ── Step 2 controllers ──
   final _bioController = TextEditingController();
@@ -54,6 +63,28 @@ class _ProviderRegistrationScreenState
 
   // ── Step 5 controllers ──
   bool _acceptTerms = false;
+
+  bool get _isConversion => widget.convertToTechnician;
+
+  // ── Categorías (cargadas desde la tabla service_categories) ──
+  final CategoryService _categoryService = CategoryService();
+  List<ServiceCategory> _categories = const [];
+  bool _loadingCategories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final categories = await _categoryService.getActiveCategories();
+    if (!mounted) return;
+    setState(() {
+      _categories = categories;
+      _loadingCategories = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -114,11 +145,15 @@ class _ProviderRegistrationScreenState
       case 1:
         return _bioController.text.trim().length >= 20;
       case 2:
-        return _emailController.text.trim().isNotEmpty &&
-            _emailController.text.contains('@') &&
-            _phoneController.text.replaceAll(' ', '').length == 9 &&
+        final email = _emailController.text.trim();
+        final emailOk = email.isEmpty || email.contains('@');
+        final phoneOk = _phoneController.text.replaceAll(' ', '').length == 9;
+        final passwordOk =
             _passwordController.text.length >= 6 &&
             _passwordController.text == _confirmPasswordController.text;
+        return _isConversion
+            ? phoneOk && emailOk
+            : email.isNotEmpty && emailOk && passwordOk;
       case 3:
         return _selectedCategories.isNotEmpty;
       case 4:
@@ -136,7 +171,8 @@ class _ProviderRegistrationScreenState
         'name': _nameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
         'dni': _dniController.text.trim(),
-        'district': _selectedDistrict,
+        'district': _selectedDistrict?.name,
+        'districtId': _selectedDistrict?.id,
         'photo': _photoPath,
         'bio': _bioController.text.trim(),
         'email': _emailController.text.trim(),
@@ -144,6 +180,7 @@ class _ProviderRegistrationScreenState
         'password': _passwordController.text,
         'categories': _selectedCategories,
         'role': 'provider',
+        'convertToTechnician': _isConversion,
       },
     );
   }
@@ -185,7 +222,9 @@ class _ProviderRegistrationScreenState
                       Semantics(
                         header: true,
                         child: Text(
-                          'Registro de trabajadores',
+                          _isConversion
+                              ? 'Conviértete en trabajador'
+                              : 'Registro de trabajadores',
                           style: AppTypography.headingSmall.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
@@ -250,8 +289,11 @@ class _ProviderRegistrationScreenState
                           setState(() => _obscureConfirm = !_obscureConfirm);
                         },
                         onChanged: () => setState(() {}),
+                        isConversion: _isConversion,
                       ),
                       _Step4Categories(
+                        categories: _categories,
+                        loading: _loadingCategories,
                         selectedCategories: _selectedCategories,
                         onCategoryToggled: (category) {
                           setState(() {
@@ -362,8 +404,8 @@ class _Step1BasicData extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController lastNameController;
   final TextEditingController dniController;
-  final String? selectedDistrict;
-  final ValueChanged<String> onDistrictSelected;
+  final District? selectedDistrict;
+  final ValueChanged<District> onDistrictSelected;
   final VoidCallback onChanged;
 
   @override
@@ -498,12 +540,12 @@ class _Step1BasicData extends StatelessWidget {
           Semantics(
             button: true,
             label: selectedDistrict != null
-                ? 'Distrito seleccionado: $selectedDistrict. Toque para cambiar'
+                ? 'Distrito seleccionado: ${selectedDistrict!.name}. Toque para cambiar'
                 : 'Seleccionar distrito',
             child: GestureDetector(
               onTap: () async {
                 FocusScope.of(context).unfocus();
-                final result = await Navigator.of(context).push<String>(
+                final result = await Navigator.of(context).push<District>(
                   MaterialPageRoute(
                     builder: (_) => DistrictSelectorScreen(
                       currentSelection: selectedDistrict,
@@ -530,7 +572,7 @@ class _Step1BasicData extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      selectedDistrict ?? 'Seleccione su distrito',
+                      selectedDistrict?.name ?? 'Seleccione su distrito',
                       style: AppTypography.bodyMedium.copyWith(
                         color: selectedDistrict != null
                             ? AppColors.textPrimary
@@ -933,6 +975,7 @@ class _Step3Contact extends StatelessWidget {
     required this.onTogglePassword,
     required this.onToggleConfirm,
     required this.onChanged,
+    required this.isConversion,
   });
 
   final TextEditingController emailController;
@@ -944,6 +987,7 @@ class _Step3Contact extends StatelessWidget {
   final VoidCallback onTogglePassword;
   final VoidCallback onToggleConfirm;
   final VoidCallback onChanged;
+  final bool isConversion;
 
   bool get _showMinLengthError =>
       passwordController.text.isNotEmpty && passwordController.text.length < 6;
@@ -968,7 +1012,7 @@ class _Step3Contact extends StatelessWidget {
           Semantics(
             header: true,
             child: Text(
-              'Datos de acceso',
+              isConversion ? 'Datos de contacto' : 'Datos de acceso',
               style: AppTypography.displaySmall.copyWith(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w800,
@@ -977,7 +1021,9 @@ class _Step3Contact extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Con estos datos podrás ingresar a tu cuenta.',
+            isConversion
+                ? 'Usaremos tu cuenta actual. Solo completa tu teléfono y, si quieres, actualiza tu correo de contacto.'
+                : 'Con estos datos podrás ingresar a tu cuenta.',
             style: AppTypography.bodyLarge.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -985,12 +1031,18 @@ class _Step3Contact extends StatelessWidget {
 
           const SizedBox(height: AppSpacing.xxl),
 
-          // ── Correo electrónico (obligatorio - credencial de login) ──
-          _FieldLabel(text: 'Correo electrónico'),
+          // ── Correo electrónico ──
+          _FieldLabel(
+            text: isConversion
+                ? 'Correo electrónico (opcional)'
+                : 'Correo electrónico',
+          ),
           const SizedBox(height: 10),
           Semantics(
             textField: true,
-            label: 'Ingrese su correo electrónico para iniciar sesión',
+            label: isConversion
+                ? 'Ingrese su correo electrónico de contacto opcional'
+                : 'Ingrese su correo electrónico para iniciar sesión',
             child: _FormField(
               controller: emailController,
               hint: 'tu@email.com',
@@ -1042,112 +1094,114 @@ class _Step3Contact extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.xl),
+          if (!isConversion) ...[
+            const SizedBox(height: AppSpacing.xl),
 
-          // ── Contrasena label + icono ayuda ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _FieldLabel(text: 'Contraseña'),
-              Semantics(
-                button: true,
-                label: 'Ayuda sobre requisitos de contraseña',
-                child: GestureDetector(
-                  onTap: () => _showPasswordHelp(context),
-                  child: const Icon(
-                    Icons.help_outline_rounded,
-                    size: 20,
-                    color: AppColors.textSecondary,
+            // ── Contrasena label + icono ayuda ──
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _FieldLabel(text: 'Contraseña'),
+                Semantics(
+                  button: true,
+                  label: 'Ayuda sobre requisitos de contraseña',
+                  child: GestureDetector(
+                    onTap: () => _showPasswordHelp(context),
+                    child: const Icon(
+                      Icons.help_outline_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // ── Campo contrasena ──
+            Semantics(
+              textField: true,
+              label: 'Ingrese su contraseña',
+              child: _PasswordFormField(
+                controller: passwordController,
+                hint: 'Escribe una clave que recordarás',
+                obscure: obscurePassword,
+                onToggle: onTogglePassword,
+                onChanged: (_) => onChanged(),
+                hasError: _showMinLengthError,
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // ── Campo contrasena ──
-          Semantics(
-            textField: true,
-            label: 'Ingrese su contraseña',
-            child: _PasswordFormField(
-              controller: passwordController,
-              hint: 'Escribe una clave que recordarás',
-              obscure: obscurePassword,
-              onToggle: onTogglePassword,
-              onChanged: (_) => onChanged(),
-              hasError: _showMinLengthError,
             ),
-          ),
 
-          // ── Mensaje validacion minimo 6 caracteres ──
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            child: _showMinLengthError
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8, left: 4),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          size: 14,
-                          color: AppColors.error,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Mínimo 6 caracteres',
-                          style: AppTypography.bodySmall.copyWith(
+            // ── Mensaje validacion minimo 6 caracteres ──
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child: _showMinLengthError
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 4),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            size: 14,
                             color: AppColors.error,
-                            fontWeight: FontWeight.w500,
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          const SizedBox(height: AppSpacing.md),
-
-          // ── Campo confirmar ──
-          Semantics(
-            textField: true,
-            label: 'Repita su contraseña',
-            child: _PasswordFormField(
-              controller: confirmPasswordController,
-              hint: 'Repetir la nueva clave',
-              obscure: obscureConfirm,
-              onToggle: onToggleConfirm,
-              onChanged: (_) => onChanged(),
-              hasError: _showMismatchError,
+                          const SizedBox(width: 6),
+                          Text(
+                            'Mínimo 6 caracteres',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
-          ),
 
-          // ── Mensaje si no coinciden ──
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            child: _showMismatchError
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8, left: 4),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          size: 14,
-                          color: AppColors.error,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Las contraseñas no coinciden',
-                          style: AppTypography.bodySmall.copyWith(
+            const SizedBox(height: AppSpacing.md),
+
+            // ── Campo confirmar ──
+            Semantics(
+              textField: true,
+              label: 'Repita su contraseña',
+              child: _PasswordFormField(
+                controller: confirmPasswordController,
+                hint: 'Repetir la nueva clave',
+                obscure: obscureConfirm,
+                onToggle: onToggleConfirm,
+                onChanged: (_) => onChanged(),
+                hasError: _showMismatchError,
+              ),
+            ),
+
+            // ── Mensaje si no coinciden ──
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child: _showMismatchError
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 4),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            size: 14,
                             color: AppColors.error,
-                            fontWeight: FontWeight.w500,
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Las contraseñas no coinciden',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ],
       ),
     );
@@ -1191,30 +1245,16 @@ class _Step3Contact extends StatelessWidget {
 // ─────────────────────────────────────────────────────────
 class _Step4Categories extends StatelessWidget {
   const _Step4Categories({
+    required this.categories,
+    required this.loading,
     required this.selectedCategories,
     required this.onCategoryToggled,
   });
 
+  final List<ServiceCategory> categories;
+  final bool loading;
   final List<String> selectedCategories;
   final ValueChanged<String> onCategoryToggled;
-
-  static const List<_CategoryItem> _categories = [
-    _CategoryItem(name: 'Albañil', emoji: '🧱'),
-    _CategoryItem(name: 'Electricista', emoji: '⚡'),
-    _CategoryItem(name: 'Pintura', emoji: '🎨'),
-    _CategoryItem(name: 'Plomero', emoji: '🔧'),
-    _CategoryItem(name: 'Aire Acondicionado', emoji: '❄️'),
-    _CategoryItem(name: 'Piscinas', emoji: '🏊'),
-    _CategoryItem(name: 'Jardinería', emoji: '🌿'),
-    _CategoryItem(name: 'Contratista/Construcción', emoji: '🏗️'),
-    _CategoryItem(name: 'Flete/Mudanza', emoji: '🚚'),
-    _CategoryItem(name: 'Seguridad', emoji: '🔒'),
-    _CategoryItem(name: 'Azulejista', emoji: '🧩'),
-    _CategoryItem(name: 'Pisos y baldosas', emoji: '🪨'),
-    _CategoryItem(name: 'Diseño de Interiores', emoji: '🛋️'),
-    _CategoryItem(name: 'Iluminación', emoji: '💡'),
-    _CategoryItem(name: 'Herrero', emoji: '⚒️'),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -1269,105 +1309,125 @@ class _Step4Categories extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
 
           // ── Grid de categorías ──
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.9,
-            children: _categories.map((category) {
-              final isSelected = selectedCategories.contains(category.name);
-              final isMaxReached = selectedCategories.length >= 2;
-              final isDisabled = isMaxReached && !isSelected;
-              return Semantics(
-                button: true,
-                selected: isSelected,
-                enabled: !isDisabled,
-                label:
-                    '${category.name}${isSelected ? ", seleccionado" : ""}${isDisabled ? ", no disponible" : ""}',
-                child: GestureDetector(
-                  onTap: () => onCategoryToggled(category.name),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFFFFF0ED)
-                          : isDisabled
-                          ? const Color(0xFFF0F4F8).withValues(alpha: 0.5)
-                          : const Color(0xFFF0F4F8),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFFEE7070)
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: AnimatedOpacity(
+          if (loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (categories.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Text(
+                  'No se pudieron cargar las categorías.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            )
+          else
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.9,
+              children: categories.map((category) {
+                final isSelected = selectedCategories.contains(category.name);
+                final isMaxReached = selectedCategories.length >= 2;
+                final isDisabled = isMaxReached && !isSelected;
+                return Semantics(
+                  button: true,
+                  selected: isSelected,
+                  enabled: !isDisabled,
+                  label:
+                      '${category.name}${isSelected ? ", seleccionado" : ""}${isDisabled ? ", no disponible" : ""}',
+                  child: GestureDetector(
+                    onTap: () => onCategoryToggled(category.name),
+                    child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      opacity: isDisabled ? 0.4 : 1.0,
-                      child: Stack(
-                        children: [
-                          // ── Check overlay ──
-                          if (isSelected)
-                            Positioned(
-                              top: 6,
-                              right: 6,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFEE7070),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  size: 14,
-                                  color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFFFF0ED)
+                            : isDisabled
+                            ? const Color(0xFFF0F4F8).withValues(alpha: 0.5)
+                            : const Color(0xFFF0F4F8),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFEE7070)
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: isDisabled ? 0.4 : 1.0,
+                        child: Stack(
+                          children: [
+                            // ── Check overlay ──
+                            if (isSelected)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEE7070),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                          // ── Content ──
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  category.emoji,
-                                  style: const TextStyle(fontSize: 40),
-                                ),
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
+                            // ── Content ──
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    category.emoji,
+                                    style: const TextStyle(fontSize: 40),
                                   ),
-                                  child: Text(
-                                    category.name,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: isSelected
-                                          ? const Color(0xFFEE7070)
-                                          : AppColors.textPrimary,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w400,
+                                  const SizedBox(height: 8),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: Text(
+                                      category.name,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: isSelected
+                                            ? const Color(0xFFEE7070)
+                                            : AppColors.textPrimary,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
+                );
+              }).toList(),
+            ),
 
           const SizedBox(height: AppSpacing.xl),
         ],
@@ -1406,14 +1466,6 @@ class _Step4Categories extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Modelo de datos para categoría
-class _CategoryItem {
-  const _CategoryItem({required this.name, required this.emoji});
-
-  final String name;
-  final String emoji;
 }
 
 // ─────────────────────────────────────────────────────────

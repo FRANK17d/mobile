@@ -5,6 +5,7 @@ import '../../../../core/constants/app_images.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../services/toke_pro_service.dart';
 
 class TokeProScreen extends StatefulWidget {
   const TokeProScreen({super.key});
@@ -16,6 +17,7 @@ class TokeProScreen extends StatefulWidget {
 class _TokeProScreenState extends State<TokeProScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  final TokeProService _tokeProService = TokeProService();
   static const double _stickyPlansReservedHeight = 340;
 
   static const _benefits = [
@@ -53,11 +55,11 @@ class _TokeProScreenState extends State<TokeProScreen>
     _ProBenefit(
       icon: Icons.paid_rounded,
       title: 'Créditos',
-      body: 'Recibe 50 créditos con el plan trimestral o 200 con el anual.',
+      body: 'Recibe créditos incluidos según el plan que elijas.',
     ),
   ];
 
-  static const _plans = [
+  static const _fallbackPlans = [
     _ProPlan(
       title: 'Plan trimestral',
       price: 'S/ 49.00',
@@ -74,6 +76,9 @@ class _TokeProScreenState extends State<TokeProScreen>
     ),
   ];
 
+  List<_ProPlan> _plans = _fallbackPlans;
+  bool _isLoadingPlans = true;
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +86,40 @@ class _TokeProScreenState extends State<TokeProScreen>
       vsync: this,
       duration: const Duration(milliseconds: 850),
     )..forward();
+    _loadPlans();
+  }
+
+  Future<void> _loadPlans() async {
+    final plans = await _tokeProService.getActivePlans();
+    if (!mounted) return;
+
+    setState(() {
+      _plans = plans == null
+          ? _fallbackPlans
+          : plans
+                .map(
+                  (plan) => _ProPlan(
+                    title: plan.name,
+                    price: 'S/ ${plan.pricePen.toStringAsFixed(2)}',
+                    period: _durationLabel(plan.durationDays),
+                    credits: plan.includedCredits,
+                  ),
+                )
+                .toList();
+      _isLoadingPlans = false;
+    });
+  }
+
+  String _durationLabel(int days) {
+    if (days % 365 == 0) {
+      final years = days ~/ 365;
+      return '$years ${years == 1 ? 'año' : 'años'}';
+    }
+    if (days % 30 == 0) {
+      final months = days ~/ 30;
+      return '$months ${months == 1 ? 'mes' : 'meses'}';
+    }
+    return '$days días';
   }
 
   @override
@@ -161,7 +200,10 @@ class _TokeProScreenState extends State<TokeProScreen>
                 begin: 0.44,
                 end: 0.92,
                 offset: const Offset(0, 0.18),
-                child: const _StickyPlansPanel(plans: _plans),
+                child: _StickyPlansPanel(
+                  plans: _plans,
+                  isLoading: _isLoadingPlans,
+                ),
               ),
             ),
           ],
@@ -498,7 +540,7 @@ class _CreditBonusCallout extends StatelessWidget {
         const SizedBox(width: AppSpacing.lg),
         Expanded(
           child: Text(
-            'Con TokePro ganas más: 50 créditos con el plan trimestral o 200 créditos con el anual. Más visibilidad, más oportunidades y más conexiones.',
+            'Con TokePro ganas más visibilidad, más oportunidades y créditos incluidos según el plan activo que elijas.',
             style: AppTypography.headingSmall.copyWith(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -513,20 +555,22 @@ class _CreditBonusCallout extends StatelessWidget {
 }
 
 class _StickyPlansPanel extends StatelessWidget {
-  const _StickyPlansPanel({required this.plans});
+  const _StickyPlansPanel({required this.plans, required this.isLoading});
 
   final List<_ProPlan> plans;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    return _PlansPanel(plans: plans);
+    return _PlansPanel(plans: plans, isLoading: isLoading);
   }
 }
 
 class _PlansPanel extends StatelessWidget {
-  const _PlansPanel({required this.plans});
+  const _PlansPanel({required this.plans, required this.isLoading});
 
   final List<_ProPlan> plans;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -547,14 +591,34 @@ class _PlansPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ...List.generate(plans.length, (index) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index == plans.length - 1 ? 0 : AppSpacing.md,
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
               ),
-              child: _PlanCard(plan: plans[index]),
-            );
-          }),
+            )
+          else if (plans.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                'No hay planes activos por ahora.',
+                style: AppTypography.bodyLarge.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            ...List.generate(plans.length, (index) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == plans.length - 1 ? 0 : AppSpacing.md,
+                ),
+                child: _PlanCard(plan: plans[index]),
+              );
+            }),
         ],
       ),
     );

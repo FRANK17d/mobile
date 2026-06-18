@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/network/insforge_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/feedback/app_toast.dart';
 import '../../../core/widgets/feedback/loading_mascot.dart';
 import '../services/auth_service.dart';
+import '../services/auth_store.dart';
 
 /// Pantalla de procesamiento del registro.
 /// Muestra la mascota con animacion de carga (3 puntos pulsando).
@@ -24,6 +26,8 @@ class RegistrationProcessingScreen extends StatefulWidget {
 
 class _RegistrationProcessingScreenState
     extends State<RegistrationProcessingScreen> {
+  final InsForgeClient _client = InsForgeClient();
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +50,35 @@ class _RegistrationProcessingScreenState
         final name = '${args['name'] ?? ''} ${args['lastName'] ?? ''}'.trim();
 
         if (role == 'provider') {
+          if (args['convertToTechnician'] == true) {
+            final result =
+                await _completeCurrentAccountTechnician(
+                  authService,
+                  args,
+                ).timeout(
+                  const Duration(seconds: 15),
+                  onTimeout: () => const TechnicianRegistrationResult(
+                    success: false,
+                    error: 'timeout',
+                    message:
+                        'La conversión tardó demasiado. Inténtalo de nuevo.',
+                  ),
+                );
+
+            await Future.delayed(const Duration(milliseconds: 1200));
+            if (!mounted) return;
+
+            if (result.success) {
+              final profile = await authService.getMyTechnicianProfile();
+              if (!mounted) return;
+              AuthStore.instance.setAuthenticated(profile);
+              context.go(AppRoutes.techHome);
+            } else {
+              _showErrorAndGoBack(result.message);
+            }
+            return;
+          }
+
           // ── Flujo técnico: solo crear usuario auth ──
           // Después navegará a OTP para verificar y completar perfil
           final success = await authService
@@ -97,6 +130,46 @@ class _RegistrationProcessingScreenState
       if (!mounted) return;
       _showErrorAndGoBack('Error inesperado. Inténtalo de nuevo.');
     }
+  }
+
+  Future<TechnicianRegistrationResult> _completeCurrentAccountTechnician(
+    AuthService authService,
+    Map<String, dynamic> args,
+  ) async {
+    final currentProfile = await authService.getMyTechnicianProfile();
+    final fallbackEmail = currentProfile?['email'] as String? ?? '';
+    final userId = await _client.getCurrentUserId();
+
+    String? avatarUrl;
+    final photoPath = args['photo'] as String?;
+    if (userId != null && photoPath != null && photoPath.isNotEmpty) {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final ext = photoPath.split('.').last.toLowerCase();
+      final objectKey = 'technicians/$userId/avatar-$timestamp.$ext';
+      final uploadResult = await _client.uploadFile(
+        bucket: 'avatars',
+        filePath: photoPath,
+        objectKey: objectKey,
+      );
+      avatarUrl = uploadResult?['url'];
+    }
+
+    final email = (args['email'] as String? ?? '').trim();
+    final techData = TechnicianRegistrationData(
+      firstName: args['name'] as String? ?? '',
+      lastName: args['lastName'] as String? ?? '',
+      dni: args['dni'] as String? ?? '',
+      district: args['district'] as String? ?? '',
+      districtId: args['districtId'] as int?,
+      bio: args['bio'] as String? ?? '',
+      phone: args['phone'] as String? ?? '',
+      email: email.isEmpty ? fallbackEmail : email,
+      password: '',
+      avatarUrl: avatarUrl,
+      categories: List<String>.from(args['categories'] ?? []),
+    );
+
+    return authService.completeTechnicianProfile(techData);
   }
 
   void _showErrorAndGoBack(String message) {

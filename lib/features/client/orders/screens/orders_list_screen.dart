@@ -3,9 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/network/insforge_client.dart';
+import '../../../../core/services/realtime_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/navigation/app_menu_sheet.dart';
+import '../../../auth/services/auth_store.dart';
+import '../../request_service/screens/request_applicants_screen.dart';
+import '../../request_service/services/request_service.dart';
 
 /// Pantalla de pedidos del cliente.
 ///
@@ -14,15 +19,17 @@ import '../../../../core/widgets/navigation/app_menu_sheet.dart';
 class OrdersListScreen extends StatelessWidget {
   const OrdersListScreen({super.key});
 
-  // TODO: reemplazar con estado real de autenticacion
-  static const _isAuthenticated = false;
-
   @override
   Widget build(BuildContext context) {
-    if (_isAuthenticated) {
-      return const _AuthenticatedOrdersView();
-    }
-    return const _UnauthenticatedOrdersView();
+    return ValueListenableBuilder<AuthSnapshot>(
+      valueListenable: AuthStore.instance.notifier,
+      builder: (context, auth, _) {
+        if (auth.isAuthenticated) {
+          return const _AuthenticatedOrdersView();
+        }
+        return const _UnauthenticatedOrdersView();
+      },
+    );
   }
 }
 
@@ -269,8 +276,78 @@ class _ComoFuncionaButton extends StatelessWidget {
 // ─────────────────────────────────────────────────────────
 // Vista autenticada (con tabs de pedidos)
 // ─────────────────────────────────────────────────────────
-class _AuthenticatedOrdersView extends StatelessWidget {
+class _AuthenticatedOrdersView extends StatefulWidget {
   const _AuthenticatedOrdersView();
+
+  @override
+  State<_AuthenticatedOrdersView> createState() =>
+      _AuthenticatedOrdersViewState();
+}
+
+class _AuthenticatedOrdersViewState extends State<_AuthenticatedOrdersView> {
+  final RequestService _service = RequestService();
+
+  List<MyRequest> _requests = const [];
+  bool _loading = true;
+
+  final List<VoidCallback> _rtUnsub = [];
+  String? _clientChannel;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _setupRealtime();
+  }
+
+  Future<void> _setupRealtime() async {
+    final rt = RealtimeService.instance;
+    await rt.connect();
+    final uid = await InsForgeClient().getCurrentUserId();
+    if (uid == null) return;
+    _clientChannel = 'client:$uid';
+    rt.subscribe(_clientChannel!);
+    void refresh(Map<String, dynamic> _) {
+      if (mounted) _load();
+    }
+
+    _rtUnsub.add(rt.on('new_application', refresh));
+    _rtUnsub.add(rt.on('status_changed', refresh));
+  }
+
+  @override
+  void dispose() {
+    for (final off in _rtUnsub) {
+      off();
+    }
+    if (_clientChannel != null) {
+      RealtimeService.instance.unsubscribe(_clientChannel!);
+    }
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final list = await _service.getMyRequests();
+    if (!mounted) return;
+    setState(() {
+      _requests = list;
+      _loading = false;
+    });
+  }
+
+  List<MyRequest> _filter(Set<String> statuses) =>
+      _requests.where((r) => statuses.contains(r.status)).toList();
+
+  Future<void> _openApplicants(MyRequest r) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            RequestApplicantsScreen(requestId: r.id, requestTitle: r.title),
+      ),
+    );
+    if (changed == true) _load();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -294,13 +371,232 @@ class _AuthenticatedOrdersView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: TabBarView(
-                children: [
-                  _EmptyOrdersPlaceholder(),
-                  _EmptyOrdersPlaceholder(),
-                  _EmptyOrdersPlaceholder(),
-                ],
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : TabBarView(
+                      children: [
+                        _OrdersTab(
+                          requests: _filter({
+                            'pending_review',
+                            'open',
+                            'assigned',
+                            'in_progress',
+                          }),
+                          onRefresh: _load,
+                          onTap: _openApplicants,
+                        ),
+                        _OrdersTab(
+                          requests: _filter({'completed'}),
+                          onRefresh: _load,
+                          onTap: _openApplicants,
+                        ),
+                        _OrdersTab(
+                          requests: _filter({'cancelled', 'rejected'}),
+                          onRefresh: _load,
+                          onTap: _openApplicants,
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Etiqueta + color legibles para cada estado de pedido.
+({String label, Color color, Color bg}) _statusBadge(String status) {
+  switch (status) {
+    case 'pending_review':
+      return (
+        label: 'En revisión',
+        color: AppColors.primary,
+        bg: const Color(0xFFFFF0ED),
+      );
+    case 'open':
+      return (
+        label: 'Publicado',
+        color: const Color(0xFF2563EB),
+        bg: const Color(0xFFE7EEFD),
+      );
+    case 'assigned':
+      return (
+        label: 'Asignado',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
+    case 'in_progress':
+      return (
+        label: 'En curso',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
+    case 'completed':
+      return (
+        label: 'Completado',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
+    case 'cancelled':
+      return (
+        label: 'Cancelado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
+    case 'rejected':
+      return (
+        label: 'Rechazado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
+    default:
+      return (
+        label: status,
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
+  }
+}
+
+class _OrdersTab extends StatelessWidget {
+  const _OrdersTab({
+    required this.requests,
+    required this.onRefresh,
+    required this.onTap,
+  });
+
+  final List<MyRequest> requests;
+  final Future<void> Function() onRefresh;
+  final void Function(MyRequest) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (requests.isEmpty) {
+      return _EmptyOrdersPlaceholder(onRefresh: onRefresh);
+    }
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: requests.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (_, i) => _MyRequestCard(
+          request: requests[i],
+          onTap: () => onTap(requests[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class _MyRequestCard extends StatelessWidget {
+  const _MyRequestCard({required this.request, required this.onTap});
+
+  final MyRequest request;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = _statusBadge(request.status);
+    // Solo tiene sentido ver postulantes si el pedido está publicado/asignado.
+    final canViewApplicants =
+        request.status == 'open' || request.status == 'assigned';
+
+    return GestureDetector(
+      onTap: canViewApplicants ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.neutral200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  request.categoryEmoji,
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    request.title,
+                    style: AppTypography.titleLarge.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: badge.bg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    badge.label,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: badge.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              request.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
               ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 15,
+                  color: AppColors.neutral500,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  request.districtName,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.neutral500,
+                  ),
+                ),
+                const Spacer(),
+                if (canViewApplicants) ...[
+                  Icon(
+                    Icons.group_outlined,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${request.applicationsCount} postul.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -310,24 +606,34 @@ class _AuthenticatedOrdersView extends StatelessWidget {
 }
 
 class _EmptyOrdersPlaceholder extends StatelessWidget {
+  const _EmptyOrdersPlaceholder({required this.onRefresh});
+
+  final Future<void> Function() onRefresh;
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 56,
-            color: AppColors.neutral300,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'No hay pedidos',
-            style: AppTypography.bodyLarge.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 56,
+                color: AppColors.neutral300,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No hay pedidos',
+                style: AppTypography.bodyLarge.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         ],
       ),

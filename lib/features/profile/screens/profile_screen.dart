@@ -184,7 +184,7 @@ class ProfileScreen extends StatelessWidget {
                   _ProfileMenuItem(
                     icon: Icons.help_outline_rounded,
                     title: 'Centro de ayuda',
-                    onTap: () {},
+                    onTap: () => context.push(AppRoutes.support),
                   ),
                   _ProfileMenuItem(
                     icon: Icons.privacy_tip_outlined,

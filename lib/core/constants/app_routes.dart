@@ -34,6 +34,7 @@ abstract final class AppRoutes {
   static const String chat = '/chat';
   static const String chatDetail = '/chat/:id';
   static const String notifications = '/notifications';
+  static const String support = '/support';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
   static const String settings = '/settings';

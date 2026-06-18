@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../request_service/screens/request_service_wizard_screen.dart';
 import '../services/category_service.dart';
 
 /// Carrusel infinito auto-scroll de categorias de servicio.
@@ -128,7 +129,17 @@ class _CategoriesCarouselState extends State<CategoriesCarousel>
                     return _CategoryChip(
                       label: cat.name,
                       emoji: cat.emoji,
-                      onTap: () => widget.onCategoryTap?.call(cat.name),
+                      onTap: () {
+                        widget.onCategoryTap?.call(cat.name);
+                        // Abrir el wizard de pedido con la categoría preseleccionada.
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => RequestServiceWizardScreen(
+                              initialCategoryName: cat.name,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

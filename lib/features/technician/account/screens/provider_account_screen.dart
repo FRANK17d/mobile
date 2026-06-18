@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
 import '../../../auth/services/auth_service.dart';
 import 'credits_screen.dart';
+import 'identity_verification_screen.dart';
 import 'panel_screens.dart';
 import 'technician_profile_preview_screen.dart';
 import 'toke_pro_screen.dart';
@@ -102,7 +103,10 @@ class _ProviderAccountScreenState extends State<ProviderAccountScreen> {
       child: Stack(
         children: [
           // ── Contenido principal ──
-          _AccountContent(profileData: _profileData),
+          _AccountContent(
+            profileData: _profileData,
+            onVerificationSubmitted: _loadProfile,
+          ),
 
           // ── Overlay de guía (primera vez) ──
           if (_showGuide)
@@ -121,9 +125,13 @@ class _ProviderAccountScreenState extends State<ProviderAccountScreen> {
 // CONTENIDO PRINCIPAL
 // ═══════════════════════════════════════════════════════════
 class _AccountContent extends StatelessWidget {
-  const _AccountContent({this.profileData});
+  const _AccountContent({
+    this.profileData,
+    required this.onVerificationSubmitted,
+  });
 
   final Map<String, dynamic>? profileData;
+  final Future<void> Function() onVerificationSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +146,10 @@ class _AccountContent extends StatelessWidget {
             _ProfileHeader(topPadding: topPadding, profileData: profileData),
 
             // ── Cards de verificación ──
-            const _VerificationCards(),
+            _VerificationCards(
+              profileData: profileData,
+              onVerificationSubmitted: onVerificationSubmitted,
+            ),
 
             const SizedBox(height: 16),
 
@@ -422,7 +433,63 @@ class _HeaderIcon extends StatelessWidget {
 // CARDS DE VERIFICACIÓN
 // ═══════════════════════════════════════════════════════════
 class _VerificationCards extends StatelessWidget {
-  const _VerificationCards();
+  const _VerificationCards({
+    this.profileData,
+    required this.onVerificationSubmitted,
+  });
+
+  final Map<String, dynamic>? profileData;
+  final Future<void> Function() onVerificationSubmitted;
+
+  Future<void> _openVerification(BuildContext context) async {
+    final submitted = await Navigator.of(context).push<bool>(
+      PageRouteBuilder<bool>(
+        transitionDuration: const Duration(milliseconds: 420),
+        reverseTransitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            IdentityVerificationScreen(profileData: profileData),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.08),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+
+    if (submitted == true) {
+      await onVerificationSubmitted();
+    }
+  }
+
+  String get _status {
+    final technician = profileData?['technician'];
+    if (technician is Map && technician['verification_status'] != null) {
+      return technician['verification_status'].toString();
+    }
+    return 'pending';
+  }
+
+  String? get _rejectionReason {
+    final technician = profileData?['technician'];
+    if (technician is Map && technician['rejection_reason'] != null) {
+      final reason = technician['rejection_reason'].toString().trim();
+      return reason.isEmpty ? null : reason;
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -430,14 +497,34 @@ class _VerificationCards extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          _VerificationCard(
-            icon: Icons.badge_outlined,
-            iconBgColor: const Color(0xFFFFF3E0),
-            iconColor: const Color(0xFFE65100),
-            title: 'Verificá tu identidad',
-            description:
-                'Verificar tu identidad nos ayuda a mantener la seguridad de la comunidad.',
-          ),
+          switch (_status) {
+            'verified' => const _VerificationCard(
+              icon: Icons.verified_rounded,
+              iconBgColor: AppColors.successLight,
+              iconColor: AppColors.success,
+              title: 'Identidad verificada',
+              description: 'Tu cuenta ya puede postular a pedidos disponibles.',
+            ),
+            'rejected' => _VerificationCard(
+              icon: Icons.error_outline_rounded,
+              iconBgColor: AppColors.errorLight,
+              iconColor: AppColors.error,
+              title: 'Verificación rechazada',
+              description:
+                  _rejectionReason ??
+                  'Reenvía fotos claras de tu DNI y una selfie para volver a revisión.',
+              onTap: () => _openVerification(context),
+            ),
+            _ => _VerificationCard(
+              icon: Icons.badge_outlined,
+              iconBgColor: const Color(0xFFFFF3E0),
+              iconColor: const Color(0xFFE65100),
+              title: 'Verificá tu identidad',
+              description:
+                  'Sube tu DNI y una selfie para mantener segura la comunidad.',
+              onTap: () => _openVerification(context),
+            ),
+          },
         ],
       ),
     );
@@ -451,6 +538,7 @@ class _VerificationCard extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.description,
+    this.onTap,
   });
 
   final IconData icon;
@@ -458,68 +546,76 @@ class _VerificationCard extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String description;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          // ── Ícono ──
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 26),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
           ),
-
-          const SizedBox(width: 14),
-
-          // ── Texto ──
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.nunito(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1A1A1A),
-                  ),
+          child: Row(
+            children: [
+              // ── Ícono ──
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF5F6678),
-                    height: 1.3,
-                  ),
+                child: Icon(icon, color: iconColor, size: 26),
+              ),
+
+              const SizedBox(width: 14),
+
+              // ── Texto ──
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.nunito(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF5F6678),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (onTap != null) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutral500,
+                  size: 24,
                 ),
               ],
-            ),
+            ],
           ),
-
-          const SizedBox(width: 8),
-
-          // ── Chevron ──
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.neutral500,
-            size: 24,
-          ),
-        ],
+        ),
       ),
     );
   }

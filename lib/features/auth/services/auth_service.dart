@@ -12,6 +12,7 @@ class TechnicianRegistrationData {
   final String lastName;
   final String dni;
   final String district;
+  final int? districtId;
   final String bio;
   final String phone;
   final String email;
@@ -24,6 +25,7 @@ class TechnicianRegistrationData {
     required this.lastName,
     required this.dni,
     required this.district,
+    this.districtId,
     required this.bio,
     required this.phone,
     required this.email,
@@ -55,6 +57,7 @@ class ClientRegistrationData {
   final String firstName;
   final String lastName;
   final String district;
+  final int? districtId;
   final String phone;
   final String email;
   final String password;
@@ -63,6 +66,7 @@ class ClientRegistrationData {
     required this.firstName,
     required this.lastName,
     required this.district,
+    this.districtId,
     required this.phone,
     required this.email,
     required this.password,
@@ -169,6 +173,7 @@ class AuthService {
           'p_first_name': data.firstName,
           'p_last_name': data.lastName,
           'p_district_name': data.district,
+          'p_district_id': data.districtId,
           'p_phone': data.phone,
           'p_email': data.email,
         },
@@ -502,9 +507,10 @@ class AuthService {
           'p_last_name': data.lastName,
           'p_dni': data.dni,
           'p_district_name': data.district,
+          'p_district_id': data.districtId,
           'p_bio': data.bio,
           'p_phone': data.phone,
-          'p_email': data.email,
+          'p_email': data.email.trim().isEmpty ? null : data.email.trim(),
           'p_avatar_url': data.avatarUrl,
           'p_categories': data.categories,
         },
