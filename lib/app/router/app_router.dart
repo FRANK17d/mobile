@@ -7,6 +7,7 @@ import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/account_type_screen.dart';
 import '../../features/auth/screens/client_registration_screen.dart';
+import '../../features/auth/screens/become_provider_screen.dart';
 import '../../features/auth/screens/provider_registration_screen.dart';
 import '../../features/auth/screens/registration_processing_screen.dart';
 import '../../features/auth/screens/registration_otp_screen.dart';
@@ -139,6 +140,29 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const ProviderRegistrationScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Cliente → Prestador: conversión de la cuenta actual ───
+    GoRoute(
+      path: '/become-provider',
+      name: 'becomeProvider',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const BecomeProviderScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)

@@ -14,7 +14,7 @@ class InsForgeClient {
 
   static const String baseUrl = 'https://439t8drp.us-east.insforge.app';
   static const String _anonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3OC0xMjM0LTU2NzgtOTBhYi1jZGVmMTIzNDU2NzgiLCJlbWFpbCI6ImFub25AaW5zZm9yZ2UuY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NDUzMTR9.cH00CEsIwy7FW31ZZgfp5Lt9yVVmtBFhMO9wEDXF_9E';
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3OC0xMjM0LTU2NzgtOTBhYi1jZGVmMTIzNDU2NzgiLCJlbWFpbCI6ImFub25AaW5zZm9yZ2UuY29tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMjk3Mzd9.SnGdFzqfqicMIz2m1r_4VYhUyrCxRwdGKOWk0Eb2fYw';
   static const int _maxUploadBytes = 5 * 1024 * 1024;
 
   final _storage = const FlutterSecureStorage();
@@ -37,9 +37,13 @@ class InsForgeClient {
     await _storage.delete(key: _refreshTokenKey);
   }
 
-  /// Limpia TODOS los datos de sesion incluyendo tokens y verifiers OAuth.
+  /// Limpia los datos de SESIÓN (tokens + verifier OAuth). NO borra las
+  /// credenciales del acceso biométrico (`biometric_*`), que deben sobrevivir al
+  /// cierre de sesión para poder volver a entrar con huella.
   Future<void> clearAllAuthData() async {
-    await _storage.deleteAll();
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+    await _storage.delete(key: 'google_oauth_code_verifier');
   }
 
   Future<String?> getAccessToken() async {

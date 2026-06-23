@@ -42,23 +42,143 @@ class StepProgressBar extends StatelessWidget {
 }
 
 /// Pequeño signo de interrogación a la derecha de los títulos (ayuda).
-class HelpBadge extends StatelessWidget {
-  const HelpBadge({super.key, this.onTap});
+///
+/// Al tocarlo despliega un "avisito" (tooltip) animado con [message], anclado
+/// debajo del ícono. Se cierra al tocar fuera.
+class HelpBadge extends StatefulWidget {
+  const HelpBadge({super.key, this.message});
 
-  final VoidCallback? onTap;
+  /// Texto del avisito de ayuda. Si es null usa un texto genérico.
+  final String? message;
+
+  @override
+  State<HelpBadge> createState() => _HelpBadgeState();
+}
+
+class _HelpBadgeState extends State<HelpBadge>
+    with SingleTickerProviderStateMixin {
+  final LayerLink _link = LayerLink();
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  OverlayEntry? _entry;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack);
+  }
+
+  @override
+  void dispose() {
+    _removeNow();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() => _entry == null ? _show() : _hide();
+
+  void _show() {
+    _entry = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          // Barrera para cerrar al tocar fuera.
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _hide,
+            ),
+          ),
+          CompositedTransformFollower(
+            link: _link,
+            showWhenUnlinked: false,
+            targetAnchor: Alignment.bottomRight,
+            followerAnchor: Alignment.topRight,
+            offset: const Offset(6, 8),
+            child: FadeTransition(
+              opacity: _ctrl,
+              child: ScaleTransition(
+                scale: _scale,
+                alignment: Alignment.topRight,
+                child: _TooltipBubble(
+                  message: widget.message ?? 'Información de ayuda.',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_entry!);
+    _ctrl.forward(from: 0);
+  }
+
+  void _hide() {
+    if (_entry == null) return;
+    _ctrl.reverse().whenComplete(_removeNow);
+  }
+
+  void _removeNow() {
+    _entry?.remove();
+    _entry = null;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Text(
-          '?',
-          style: AppTypography.headingSmall.copyWith(
-            color: AppColors.textTertiary,
-            fontWeight: FontWeight.w600,
+    return CompositedTransformTarget(
+      link: _link,
+      child: GestureDetector(
+        onTap: _toggle,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Text(
+            '?',
+            style: AppTypography.headingSmall.copyWith(
+              color: AppColors.textTertiary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Burbuja del avisito de ayuda.
+class _TooltipBubble extends StatelessWidget {
+  const _TooltipBubble({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1D2939),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Text(
+            message,
+            style: AppTypography.bodyMedium.copyWith(
+              color: Colors.white,
+              height: 1.35,
+            ),
           ),
         ),
       ),
@@ -73,11 +193,17 @@ class SelectableChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.expand = false,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Cuando es true se adapta a ocupar el ancho disponible (para usarse dentro
+  /// de un [Expanded] en una fila de varios chips), con texto centrado y
+  /// padding horizontal compacto.
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -85,10 +211,11 @@ class SelectableChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
+        padding: EdgeInsets.symmetric(
+          horizontal: expand ? AppSpacing.sm : AppSpacing.lg,
           vertical: AppSpacing.sm,
         ),
+        alignment: expand ? Alignment.center : null,
         decoration: BoxDecoration(
           color: selected ? AppColors.primarySurface : Colors.white,
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -99,6 +226,9 @@ class SelectableChip extends StatelessWidget {
         ),
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: expand ? TextAlign.center : TextAlign.start,
           style: AppTypography.titleMedium.copyWith(
             color: selected ? AppColors.primary : AppColors.textSecondary,
             fontWeight: FontWeight.w600,
@@ -117,12 +247,14 @@ class CheckTile extends StatelessWidget {
     required this.onChanged,
     required this.label,
     this.showHelp = false,
+    this.helpMessage,
   });
 
   final bool value;
   final ValueChanged<bool> onChanged;
   final String label;
   final bool showHelp;
+  final String? helpMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +294,7 @@ class CheckTile extends StatelessWidget {
             ),
           ),
         ),
-        if (showHelp) const HelpBadge(),
+        if (showHelp) HelpBadge(message: helpMessage),
       ],
     );
   }

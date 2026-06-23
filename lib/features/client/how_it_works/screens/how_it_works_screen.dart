@@ -7,6 +7,8 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/buttons/gradient_pill_button.dart';
 import '../../request_service/screens/request_service_wizard_screen.dart';
+import '../../../auth/screens/account_prompt_screen.dart';
+import '../../../auth/services/auth_store.dart';
 import '../widgets/order_type_sheet.dart';
 
 /// Pantalla "¿Cómo funciona Toke+?".
@@ -18,6 +20,18 @@ import '../widgets/order_type_sheet.dart';
 /// Se abre desde la card "¿Cómo funciona?" del Home.
 class HowItWorksScreen extends StatelessWidget {
   const HowItWorksScreen({super.key});
+
+  /// "Pedir servicio": sin sesión muestra el prompt "¿Tenés una cuenta?";
+  /// con sesión abre el selector de tipo de pedido.
+  void _onPedirServicio(BuildContext context) {
+    if (!AuthStore.instance.value.isAuthenticated) {
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(builder: (_) => const AccountPromptScreen()),
+      );
+      return;
+    }
+    _openOrderTypeSheet(context);
+  }
 
   Future<void> _openOrderTypeSheet(BuildContext context) async {
     final type = await showOrderTypeSheet(context);
@@ -165,7 +179,7 @@ class HowItWorksScreen extends StatelessWidget {
               // ── CTA: Pedir servicio ──
               GradientPillButton(
                 label: 'Pedir servicio',
-                onTap: () => _openOrderTypeSheet(context),
+                onTap: () => _onPedirServicio(context),
               ),
               const SizedBox(height: AppSpacing.xxl),
 

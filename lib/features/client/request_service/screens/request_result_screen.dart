@@ -11,10 +11,13 @@ import '../../../../core/widgets/feedback/loading_mascot.dart';
 import 'order_review_screen.dart';
 
 /// Resultado de publicar un pedido: muestra "Procesando..." y luego
-/// "Pedido creado con éxito". "Aceptar" lleva al detalle del pedido en revisión.
-/// Aún sin lógica de backend (transición simulada).
+/// "Pedido creado con éxito". "Aceptar" lleva al detalle del pedido en revisión
+/// (si se conoce su id) o vuelve al inicio.
 class RequestResultScreen extends StatefulWidget {
-  const RequestResultScreen({super.key});
+  const RequestResultScreen({super.key, this.requestId});
+
+  /// Id del pedido recién creado, para abrir su ficha al aceptar.
+  final String? requestId;
 
   @override
   State<RequestResultScreen> createState() => _RequestResultScreenState();
@@ -61,8 +64,13 @@ class _RequestResultScreenState extends State<RequestResultScreen>
   }
 
   void _onAccept() {
+    final id = widget.requestId;
+    if (id == null) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const OrderReviewScreen()),
+      MaterialPageRoute<void>(builder: (_) => OrderReviewScreen(requestId: id)),
       (route) => route.isFirst,
     );
   }

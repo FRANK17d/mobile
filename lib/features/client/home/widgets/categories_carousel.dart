@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../request_service/screens/request_service_wizard_screen.dart';
 import '../services/category_service.dart';
 
 /// Carrusel infinito auto-scroll de categorias de servicio.
@@ -105,7 +104,8 @@ class _CategoriesCarouselState extends State<CategoriesCarousel>
     // Triplicamos para que siempre haya items visibles
     final items = [..._categories, ..._categories, ..._categories];
 
-    return GestureDetector(
+    return RepaintBoundary(
+      child: GestureDetector(
       onPanDown: (_) => _pauseScroll(),
       onPanEnd: (_) => _resumeScroll(),
       onPanCancel: _resumeScroll,
@@ -126,22 +126,16 @@ class _CategoriesCarouselState extends State<CategoriesCarousel>
                       const SizedBox(width: _itemSpacing),
                   itemBuilder: (_, index) {
                     final cat = items[index];
+                    final tap = widget.onCategoryTap;
+                    // Las categorías del home son solo visuales: si no se pasa
+                    // onCategoryTap, el chip no navega a ningún lado.
                     return _CategoryChip(
                       label: cat.name,
                       emoji: cat.emoji,
-                      onTap: () {
-                        widget.onCategoryTap?.call(cat.name);
-                        // Abrir el wizard de pedido con la categoría preseleccionada.
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => RequestServiceWizardScreen(
-                              initialCategoryName: cat.name,
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: tap == null ? null : () => tap(cat.name),
                     );
                   },
+
                 ),
               ),
             ),
@@ -187,6 +181,7 @@ class _CategoriesCarouselState extends State<CategoriesCarousel>
             ),
           ],
         ),
+      ),
       ),
     );
   }

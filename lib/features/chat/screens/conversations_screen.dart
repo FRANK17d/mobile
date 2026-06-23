@@ -1,12 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/navigation/app_menu_sheet.dart';
+import '../../../core/widgets/navigation/unauth_header.dart';
 import '../../auth/services/auth_store.dart';
+import '../../client/home/widgets/client_menu_sheet.dart';
+import '../../client/notifications/screens/client_notifications_screen.dart';
 import '../services/chat_service.dart';
 import 'chat_thread_screen.dart';
 
@@ -36,60 +37,13 @@ class _UnauthenticatedMessagesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         body: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.only(
-                top: topPadding + 16,
-                left: 20,
-                right: 20,
-                bottom: 28,
-              ),
-              decoration: const BoxDecoration(color: Color(0xFF1D2939)),
-              child: Row(
-                children: [
-                  Text(
-                    'Mensajes',
-                    style: AppTypography.headingLarge.copyWith(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => context.push(AppRoutes.login),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Entrar',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () => showAppMenuSheet(context),
-                    child: const Icon(Icons.menu_rounded, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
+            const UnauthHeader(title: 'Mensajes'),
             const Expanded(
               child: Center(
                 child: Padding(
@@ -160,37 +114,81 @@ class _ConversationsViewState extends State<_ConversationsView> {
     _load(); // refrescar último mensaje al volver
   }
 
+  void _openNotifications() {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(builder: (_) => const ClientNotificationsScreen()),
+    );
+  }
+
+  void _openMenu() {
+    showClientMenuSheet(context, profileData: AuthStore.instance.value.profile);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
-        appBar: AppBar(
-          title: const Text('Mensajes'),
-          centerTitle: false,
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _conversations.isEmpty
-            ? _empty()
-            : RefreshIndicator(
-                onRefresh: _load,
-                child: ListView.separated(
-                  itemCount: _conversations.length,
-                  separatorBuilder: (_, _) => const Divider(
-                    height: 1,
-                    color: AppColors.neutral200,
-                    indent: 80,
-                  ),
-                  itemBuilder: (_, i) => _ConversationTile(
-                    conversation: _conversations[i],
-                    onTap: () => _openThread(_conversations[i]),
-                  ),
-                ),
+        body: Column(
+          children: [
+            // ── Header oscuro (mismo estilo que Pedidos) ──
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.only(
+                top: topPadding + 16,
+                left: 20,
+                right: 20,
+                bottom: 20,
               ),
+              decoration: const BoxDecoration(color: Color(0xFF1D2939)),
+              child: Row(
+                children: [
+                  Text(
+                    'Mensajes',
+                    style: AppTypography.headingLarge.copyWith(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  _HeaderCircleButton(
+                    icon: Icons.notifications_outlined,
+                    onTap: _openNotifications,
+                  ),
+                  const SizedBox(width: 10),
+                  _HeaderCircleButton(
+                    icon: Icons.menu_rounded,
+                    onTap: _openMenu,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _conversations.isEmpty
+                  ? _empty()
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.separated(
+                        itemCount: _conversations.length,
+                        separatorBuilder: (_, _) => const Divider(
+                          height: 1,
+                          color: AppColors.neutral200,
+                          indent: 80,
+                        ),
+                        itemBuilder: (_, i) => _ConversationTile(
+                          conversation: _conversations[i],
+                          onTap: () => _openThread(_conversations[i]),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -198,7 +196,7 @@ class _ConversationsViewState extends State<_ConversationsView> {
   Widget _empty() {
     return ListView(
       children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+        SizedBox(height: MediaQuery.sizeOf(context).height * 0.25),
         Column(
           children: [
             Icon(
@@ -229,6 +227,31 @@ class _ConversationsViewState extends State<_ConversationsView> {
   }
 }
 
+/// Botón circular del header oscuro (campana / menú).
+class _HeaderCircleButton extends StatelessWidget {
+  const _HeaderCircleButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.2),
+        ),
+        child: Center(child: Icon(icon, size: 22, color: Colors.white)),
+      ),
+    );
+  }
+}
+
 class _ConversationTile extends StatelessWidget {
   const _ConversationTile({required this.conversation, required this.onTap});
 
@@ -245,7 +268,7 @@ class _ConversationTile extends StatelessWidget {
         radius: 26,
         backgroundColor: AppColors.neutral200,
         backgroundImage: c.otherAvatarUrl != null
-            ? NetworkImage(c.otherAvatarUrl!)
+            ? CachedNetworkImageProvider(c.otherAvatarUrl!)
             : null,
         child: c.otherAvatarUrl == null
             ? const Icon(Icons.person, color: AppColors.neutral500)

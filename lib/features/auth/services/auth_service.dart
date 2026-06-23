@@ -214,24 +214,36 @@ class AuthService {
     }
   }
 
-  /// Asegura que un usuario OAuth tenga perfil app como cliente.
+  /// Asegura que un usuario OAuth (Google) tenga perfil app como cliente.
+  ///
+  /// Solo crea el perfil la PRIMERA vez (si ya existe, respeta sus datos para no
+  /// pisar lo que el usuario haya editado). Toma su nombre + un apellido (y foto)
+  /// reales desde los datos del proveedor de Google.
   Future<bool> ensureClientProfile({
     required String userId,
     String? email,
     String? displayName,
   }) async {
     final currentProfile = await getMyTechnicianProfile();
-    final currentRole = currentProfile?['role'];
+    // Ya tiene perfil (cualquier rol): no sobrescribir.
+    if (currentProfile != null) return true;
 
-    if (currentRole == 'technician' || currentRole == 'admin') {
-      return true;
+    final oauth = await getMyOAuthName();
+    var firstName = (oauth?.givenName ?? '').trim();
+    var lastName = _firstWord(oauth?.familyName ?? '');
+
+    // Fallback: partir el display name si Google no trajo los campos separados.
+    if (firstName.isEmpty || lastName.isEmpty) {
+      final parts = (oauth?.name ?? displayName ?? '')
+          .trim()
+          .split(RegExp(r'\s+'))
+          .where((p) => p.isNotEmpty)
+          .toList();
+      if (firstName.isEmpty) {
+        firstName = parts.isNotEmpty ? parts.first : 'Cliente';
+      }
+      if (lastName.isEmpty && parts.length > 1) lastName = parts[1];
     }
-
-    final nameParts = (displayName ?? '').trim().split(RegExp(r'\s+'));
-    final firstName = nameParts.isNotEmpty && nameParts.first.isNotEmpty
-        ? nameParts.first
-        : 'Cliente';
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
     final result = await completeClientProfile(
       userId: userId,
@@ -245,7 +257,53 @@ class AuthService {
       ),
     );
 
+    // Foto de Google (el RPC de creación de perfil no la setea).
+    final avatar = oauth?.avatarUrl;
+    if (result.success && avatar != null && avatar.isNotEmpty) {
+      await updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+        avatarUrl: avatar,
+      );
+    }
+
     return result.success;
+  }
+
+  /// Primera palabra (un solo apellido) de un texto.
+  String _firstWord(String s) {
+    final t = s.trim();
+    if (t.isEmpty) return '';
+    final m = RegExp(r'\s').firstMatch(t);
+    return m == null ? t : t.substring(0, m.start);
+  }
+
+  /// Datos del proveedor OAuth (Google) del usuario actual: nombre, un apellido
+  /// y foto. Null si no es cuenta OAuth o no hay datos.
+  Future<
+    ({String? givenName, String? familyName, String? name, String? avatarUrl})?
+  >
+  getMyOAuthName() async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/get_my_oauth_name',
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final r = jsonDecode(response.body);
+        if (r is Map) {
+          return (
+            givenName: r['given_name'] as String?,
+            familyName: r['family_name'] as String?,
+            name: r['name'] as String?,
+            avatarUrl: r['avatar_url'] as String?,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('getMyOAuthName error: $e');
+    }
+    return null;
   }
 
   /// Verifies the user's email with the OTP code sent
@@ -568,6 +626,152 @@ class AuthService {
     } catch (e) {
       debugPrint('Exception fetching technician profile: $e');
       return null;
+    }
+  }
+
+  /// Sube una nueva foto de perfil al bucket público `avatars`.
+  /// Devuelve la URL pública, o null si falla.
+  Future<String?> uploadAvatar(String filePath) async {
+    final userId = await _client.getCurrentUserId();
+    if (userId == null || userId.isEmpty) return null;
+
+    final ext = filePath.split('.').last.toLowerCase();
+    final safeExt = switch (ext) {
+      'jpg' || 'jpeg' || 'png' || 'webp' || 'heic' || 'heif' => ext,
+      _ => 'jpg',
+    };
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final objectKey = 'clients/$userId/avatar-$timestamp.$safeExt';
+
+    final result = await _client.uploadFile(
+      bucket: 'avatars',
+      filePath: filePath,
+      objectKey: objectKey,
+    );
+    return result?['url'];
+  }
+
+  /// Actualiza los campos básicos del perfil propio (nombre, apellido,
+  /// teléfono, avatar) vía RPC `update_profile`. No cambia rol ni email.
+  Future<({bool success, String? message})> updateProfile({
+    required String firstName,
+    String? lastName,
+    String? phone,
+    String? avatarUrl,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/update_profile',
+        body: {
+          'p_first_name': firstName,
+          'p_last_name': lastName,
+          'p_phone': phone,
+          'p_avatar_url': avatarUrl,
+        },
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final r = jsonDecode(response.body) as Map<String, dynamic>;
+        return (
+          success: r['success'] == true,
+          message: r['message'] as String?,
+        );
+      }
+      debugPrint('updateProfile error: ${response.statusCode} ${response.body}');
+      return (success: false, message: 'No se pudo actualizar el perfil.');
+    } catch (e) {
+      debugPrint('Exception updateProfile: $e');
+      return (success: false, message: 'Error de conexión.');
+    }
+  }
+
+  /// Email del usuario autenticado (desde la sesión actual). Se usa para el
+  /// flujo de cambio de contraseña (que requiere enviar un código a su correo).
+  Future<String?> getCurrentUserEmail() async {
+    try {
+      final response = await _client.get('/api/auth/sessions/current');
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final user = data['user'] as Map<String, dynamic>?;
+        final email = user?['email'] as String?;
+        if (email != null && email.isNotEmpty) return email;
+      }
+    } catch (e) {
+      debugPrint('getCurrentUserEmail error: $e');
+    }
+    return null;
+  }
+
+  /// Convierte la cuenta actual (cliente) en prestador de servicios. Solo
+  /// requiere DNI y presentación; el resto (nombre/teléfono/distrito) se reutiliza
+  /// del perfil. Las categorías se agregan luego en el panel del técnico.
+  Future<({bool success, String? message})> convertToTechnician({
+    required String dni,
+    required String bio,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/convert_to_technician',
+        body: {'p_dni': dni, 'p_bio': bio},
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final r = jsonDecode(response.body);
+        if (r is Map) {
+          return (success: r['success'] == true, message: r['message'] as String?);
+        }
+        return (success: false, message: 'Respuesta inesperada del servidor.');
+      }
+      debugPrint(
+        'convertToTechnician error: ${response.statusCode} ${response.body}',
+      );
+      return (success: false, message: 'No se pudo completar la conversión.');
+    } catch (e) {
+      debugPrint('Exception convertToTechnician: $e');
+      return (success: false, message: 'Error de conexión.');
+    }
+  }
+
+  /// True si la cuenta tiene contraseña (login por email). Las cuentas solo-Google
+  /// devuelven false → no se les ofrece el acceso biométrico. Ante error asume
+  /// true para no bloquear a usuarios de email.
+  Future<bool> currentUserHasPassword() async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/current_user_has_password',
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final r = jsonDecode(response.body);
+        return r == true;
+      }
+    } catch (e) {
+      debugPrint('currentUserHasPassword error: $e');
+    }
+    return true;
+  }
+
+  /// Desactiva (da de baja) la cuenta del usuario autenticado vía RPC
+  /// `deactivate_my_account`. No borra datos históricos (pedidos) por integridad
+  /// referencial: marca el perfil como inactivo para que deje de ser visible y
+  /// no pueda operar. Devuelve true si se desactivó correctamente.
+  Future<bool> deactivateAccount() async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/deactivate_my_account',
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final r = jsonDecode(response.body);
+        return r is Map ? r['success'] == true : true;
+      }
+      debugPrint(
+        'deactivateAccount error: ${response.statusCode} ${response.body}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('Exception deactivateAccount: $e');
+      return false;
     }
   }
 

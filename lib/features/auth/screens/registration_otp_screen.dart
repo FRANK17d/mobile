@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/feedback/app_toast.dart';
+import '../../../core/widgets/inputs/otp_code_input.dart';
 import '../services/auth_service.dart';
 
 /// Pantalla de verificación de email OTP para registro.
@@ -27,21 +28,15 @@ class RegistrationOtpScreen extends StatefulWidget {
 }
 
 class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
-  final List<TextEditingController> _controllers = List.generate(
-    6,
-    (_) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
-
   final AuthService _authService = AuthService();
   final InsForgeClient _client = InsForgeClient();
 
+  String _otp = '';
   bool _isVerifying = false;
   bool _isCompletingProfile = false;
   String? _errorMessage;
   int _resendCooldown = 0;
   Timer? _timer;
-  bool _isApplyingOtp = false;
 
   @override
   void initState() {
@@ -51,12 +46,6 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
     _timer?.cancel();
     super.dispose();
   }
@@ -73,113 +62,15 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
     });
   }
 
-  String get _otpCode => _controllers.map((c) => c.text).join();
-
-  bool get _isOtpComplete => _otpCode.length == 6;
-
-  void _setOtpDigit(int index, String value) {
-    _controllers[index].value = TextEditingValue(
-      text: value,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-  }
-
-  void _placeCursorAtStart(int index) {
-    _controllers[index].selection = const TextSelection.collapsed(offset: 0);
-  }
-
-  void _fillOtpFrom(int startIndex, String digits) {
-    _isApplyingOtp = true;
-
-    final normalizedDigits = digits.replaceAll(RegExp(r'\D'), '');
-    for (var i = 0; i < normalizedDigits.length; i++) {
-      final targetIndex = startIndex + i;
-      if (targetIndex >= _controllers.length) break;
-      _setOtpDigit(targetIndex, normalizedDigits[i]);
-    }
-
-    _isApplyingOtp = false;
-
-    final nextEmptyIndex = _controllers.indexWhere((controller) {
-      return controller.text.isEmpty;
-    });
-    final focusIndex = nextEmptyIndex == -1
-        ? _controllers.length - 1
-        : nextEmptyIndex;
-    _focusNodes[focusIndex].requestFocus();
-    _placeCursorAtStart(focusIndex);
-
-    setState(() => _errorMessage = null);
-
-    if (_isOtpComplete && !_isVerifying) {
-      _verifyAndComplete();
-    }
-  }
-
-  void _handleOtpChanged(String value, int index) {
-    if (_isApplyingOtp) return;
-
-    final digits = value.replaceAll(RegExp(r'\D'), '');
+  void _onOtpChanged(String code) {
+    _otp = code;
     if (_errorMessage != null) {
       setState(() => _errorMessage = null);
     }
-
-    if (digits.isEmpty) {
-      _setOtpDigit(index, '');
-      if (index > 0) {
-        _focusNodes[index - 1].requestFocus();
-        _placeCursorAtStart(index - 1);
-      }
-      setState(() {});
-      return;
-    }
-
-    if (digits.length > 2) {
-      _fillOtpFrom(index, digits);
-      return;
-    }
-
-    _isApplyingOtp = true;
-    _setOtpDigit(index, digits[0]);
-    _isApplyingOtp = false;
-
-    if (index < _controllers.length - 1) {
-      _focusNodes[index + 1].requestFocus();
-      _placeCursorAtStart(index + 1);
-    } else {
-      _placeCursorAtStart(index);
-    }
-
-    setState(() {});
-
-    if (_isOtpComplete && !_isVerifying) {
-      _verifyAndComplete();
-    }
-  }
-
-  KeyEventResult _handleOtpKeyEvent(KeyEvent event, int index) {
-    if (event is! KeyDownEvent ||
-        event.logicalKey != LogicalKeyboardKey.backspace ||
-        _controllers[index].text.isNotEmpty ||
-        index == 0) {
-      return KeyEventResult.ignored;
-    }
-
-    _setOtpDigit(index - 1, '');
-    _focusNodes[index - 1].requestFocus();
-    _placeCursorAtStart(index - 1);
-
-    if (_errorMessage != null) {
-      setState(() => _errorMessage = null);
-    } else {
-      setState(() {});
-    }
-
-    return KeyEventResult.handled;
   }
 
   Future<void> _verifyAndComplete() async {
-    if (!_isOtpComplete) return;
+    if (_otp.length != 6 || _isVerifying) return;
 
     setState(() {
       _isVerifying = true;
@@ -187,9 +78,10 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
     });
 
     // Paso 1: Verificar email con OTP
-    final userId = await _authService.verifyEmail(widget.email, _otpCode);
+    final userId = await _authService.verifyEmail(widget.email, _otp);
 
     if (userId == null) {
+      if (!mounted) return;
       setState(() {
         _isVerifying = false;
         _errorMessage = 'Código incorrecto. Inténtalo de nuevo.';
@@ -197,7 +89,8 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
       return;
     }
 
-    // Paso 2: Completar perfil de técnico
+    // Paso 2: Completar perfil
+    if (!mounted) return;
     setState(() {
       _isVerifying = false;
       _isCompletingProfile = true;
@@ -426,81 +319,14 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
 
         const SizedBox(height: AppSpacing.xxxl),
 
-        // Campos OTP
-        Semantics(
-          label: 'Código de verificación de 6 dígitos',
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(6, (index) {
-              return SizedBox(
-                width: 50,
-                height: 58,
-                child: Semantics(
-                  textField: true,
-                  label: 'Dígito ${index + 1} de 6',
-                  child: Focus(
-                    onKeyEvent: (_, event) => _handleOtpKeyEvent(event, index),
-                    child: TextField(
-                      controller: _controllers[index],
-                      focusNode: _focusNodes[index],
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      textInputAction: index == 5
-                          ? TextInputAction.done
-                          : TextInputAction.next,
-                      cursorColor: AppColors.primary,
-                      style: AppTypography.headingLarge.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        filled: true,
-                        fillColor: _errorMessage != null
-                            ? AppColors.error.withValues(alpha: 0.06)
-                            : AppColors.neutral100,
-                        contentPadding: EdgeInsets.zero,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusLg,
-                          ),
-                          borderSide: BorderSide(
-                            color: _errorMessage != null
-                                ? AppColors.error
-                                : Colors.transparent,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusLg,
-                          ),
-                          borderSide: BorderSide(
-                            color: _errorMessage != null
-                                ? AppColors.error
-                                : Colors.transparent,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusLg,
-                          ),
-                          borderSide: BorderSide(
-                            color: _errorMessage != null
-                                ? AppColors.error
-                                : AppColors.primary,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      onTap: () => _placeCursorAtStart(index),
-                      onChanged: (value) => _handleOtpChanged(value, index),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
+        // Campos OTP (widget compartido y robusto).
+        OtpCodeInput(
+          hasError: _errorMessage != null,
+          onChanged: _onOtpChanged,
+          onCompleted: (code) {
+            _otp = code;
+            _verifyAndComplete();
+          },
         ),
 
         // Error message
@@ -570,7 +396,7 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _isOtpComplete ? _verifyAndComplete : null,
+                onPressed: _otp.length == 6 ? _verifyAndComplete : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   disabledBackgroundColor: AppColors.neutral200,

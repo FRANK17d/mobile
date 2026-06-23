@@ -35,10 +35,10 @@ abstract final class AppImages {
   // TODO: Reemplazar por las imágenes reales (las de las capturas adjuntas).
   //       Hasta entonces se muestra un placeholder automático.
   static const String _howItWorksPath = '$_basePath/how_it_works';
-  static const String hiwStep1 = '$_howItWorksPath/paso_1.webp';
-  static const String hiwStep2 = '$_howItWorksPath/paso_2.webp';
-  static const String hiwStep3 = '$_howItWorksPath/paso_3.webp';
-  static const String hiwTrust = '$_howItWorksPath/buscar_soluciones.webp';
+  static const String hiwStep1 = '$_basePath/paso_1.webp';
+  static const String hiwStep2 = '$_basePath/paso_2.webp';
+  static const String hiwStep3 = '$_basePath/paso_3.webp';
+  static const String hiwTrust = '$_basePath/paso_4.webp';
   static const String hiwOrderBasic = '$_howItWorksPath/pedido_basico.webp';
   static const String hiwOrderExclusive =
       '$_howItWorksPath/pedido_exclusivo.webp';

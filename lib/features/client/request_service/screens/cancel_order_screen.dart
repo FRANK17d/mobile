@@ -5,19 +5,44 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/buttons/gradient_pill_button.dart';
+import '../../../../core/widgets/feedback/app_toast.dart';
+import '../services/request_service.dart';
 import '../widgets/request_widgets.dart';
 
-/// Confirmación para cancelar un pedido. Solo vista conectada: el botón vuelve
-/// atrás. Aún sin lógica de backend.
+/// Confirmación para cancelar un pedido. Cancela vía
+/// [RequestService.cancelRequest] y devuelve `true` al cerrarse con éxito.
 class CancelOrderScreen extends StatefulWidget {
-  const CancelOrderScreen({super.key});
+  const CancelOrderScreen({super.key, required this.requestId});
+
+  final String requestId;
 
   @override
   State<CancelOrderScreen> createState() => _CancelOrderScreenState();
 }
 
 class _CancelOrderScreenState extends State<CancelOrderScreen> {
+  final RequestService _service = RequestService();
+
   bool _agreed = false;
+  bool _cancelling = false;
+
+  Future<void> _cancel() async {
+    if (_cancelling || !_agreed) return;
+    setState(() => _cancelling = true);
+    final result = await _service.cancelRequest(widget.requestId);
+    if (!mounted) return;
+    setState(() => _cancelling = false);
+
+    if (result.success) {
+      Navigator.of(context).pop(true);
+    } else {
+      showAppToast(
+        context,
+        message: result.message ?? 'No se pudo cancelar el pedido.',
+        type: ToastType.error,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +112,13 @@ class _CancelOrderScreenState extends State<CancelOrderScreen> {
               ),
             ),
             RequestBottomBar(
-              child: GradientPillButton(
-                label: 'Cancelar mi pedido',
-                onTap: () => Navigator.of(context).maybePop(),
+              child: Opacity(
+                opacity: _agreed ? 1 : 0.5,
+                child: GradientPillButton(
+                  label: 'Cancelar mi pedido',
+                  isLoading: _cancelling,
+                  onTap: _cancel,
+                ),
               ),
             ),
           ],
