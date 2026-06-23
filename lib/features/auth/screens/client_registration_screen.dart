@@ -5,8 +5,24 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/inputs/terms_acceptance.dart';
 import '../services/district_service.dart';
 import 'district_selector_screen.dart';
+
+/// Valida que [raw] sea un celular peruano (9 dígitos que empiezan en 9).
+bool _isValidPeruPhone(String raw) {
+  final digits = raw.replaceAll(' ', '');
+  return digits.length == 9 && digits.startsWith('9');
+}
+
+/// Mensaje de error inline para el teléfono, o null si es válido / vacío.
+String? _peruPhoneError(String raw) {
+  final digits = raw.replaceAll(' ', '');
+  if (digits.isEmpty) return null;
+  if (!digits.startsWith('9')) return 'Los celulares en Perú empiezan con 9';
+  if (digits.length != 9) return 'El número debe tener 9 dígitos';
+  return null;
+}
 
 /// Registro de clientes - Flujo de 3 pasos:
 /// Step 1: Nombre, Apellido, Distrito
@@ -95,7 +111,7 @@ class _ClientRegistrationScreenState extends State<ClientRegistrationScreen> {
             _lastNameController.text.trim().length >= 3 &&
             _selectedDistrict != null;
       case 1:
-        return _phoneController.text.replaceAll(' ', '').length == 9 &&
+        return _isValidPeruPhone(_phoneController.text) &&
             _emailController.text.trim().contains('@');
       case 2:
         return _passwordController.text.length >= 6 &&
@@ -447,6 +463,8 @@ class _Step2Contact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final phoneError = _peruPhoneError(phoneController.text);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.screenPaddingH,
@@ -483,8 +501,13 @@ class _Step2Contact extends StatelessWidget {
             label: 'Número de teléfono peruano, 9 dígitos',
             child: _PhoneFieldPeru(
               controller: phoneController,
+              hasError: phoneError != null,
               onChanged: (_) => onChanged(),
             ),
+          ),
+          _FieldErrorMessage(
+            visible: phoneError != null,
+            message: phoneError ?? '',
           ),
 
           const SizedBox(height: AppSpacing.xl),
@@ -682,65 +705,10 @@ class _Step3Password extends StatelessWidget {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // ── Terminos y condiciones ──
-          Semantics(
-            toggled: acceptTerms,
-            label: 'Aceptar términos y condiciones',
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Checkbox(
-                    value: acceptTerms,
-                    onChanged: onToggleTerms,
-                    activeColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    side: const BorderSide(
-                      color: AppColors.neutral400,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => onToggleTerms(!acceptTerms),
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Acepto los ',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: 'términos y condiciones de uso',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          const TextSpan(text: ' y la '),
-                          TextSpan(
-                            text: 'política de privacidad de datos',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          const TextSpan(text: '.'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          // ── Terminos y condiciones (enlaces abren WebView) ──
+          TermsAcceptanceCheckbox(
+            value: acceptTerms,
+            onChanged: onToggleTerms,
           ),
         ],
       ),
@@ -964,10 +932,15 @@ class _PasswordFormField extends StatelessWidget {
 
 /// Campo de telefono con bandera Peru +51, limitado a 9 digitos
 class _PhoneFieldPeru extends StatelessWidget {
-  const _PhoneFieldPeru({required this.controller, this.onChanged});
+  const _PhoneFieldPeru({
+    required this.controller,
+    this.onChanged,
+    this.hasError = false,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -978,7 +951,10 @@ class _PhoneFieldPeru extends StatelessWidget {
       ),
       foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.neutral300),
+        border: Border.all(
+          color: hasError ? AppColors.error : AppColors.neutral300,
+          width: hasError ? 1.5 : 1,
+        ),
       ),
       child: Row(
         children: [

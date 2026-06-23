@@ -8,9 +8,26 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/feedback/app_toast.dart';
+import '../../../core/widgets/inputs/terms_acceptance.dart';
 import '../../client/home/services/category_service.dart';
+import '../services/auth_store.dart';
 import '../services/district_service.dart';
 import 'district_selector_screen.dart';
+
+/// Valida que [raw] sea un celular peruano (9 dígitos que empiezan en 9).
+bool _isValidPeruPhone(String raw) {
+  final digits = raw.replaceAll(' ', '');
+  return digits.length == 9 && digits.startsWith('9');
+}
+
+/// Mensaje de error inline para el teléfono, o null si es válido / vacío.
+String? _peruPhoneError(String raw) {
+  final digits = raw.replaceAll(' ', '');
+  if (digits.isEmpty) return null;
+  if (!digits.startsWith('9')) return 'Los celulares en Perú empiezan con 9';
+  if (digits.length != 9) return 'El número debe tener 9 dígitos';
+  return null;
+}
 
 /// Registro de prestadores de servicio - Flujo de 5 pasos:
 /// Step 1: Nombre, Apellido, DNI, Distrito
@@ -75,6 +92,30 @@ class _ProviderRegistrationScreenState
   void initState() {
     super.initState();
     _loadCategories();
+    if (widget.convertToTechnician) _prefillFromProfile();
+  }
+
+  /// En modo conversión, el cliente ya tiene nombre/apellido/teléfono: los
+  /// pre-llenamos desde su perfil para que solo complete lo que falta
+  /// (DNI, presentación, categorías).
+  void _prefillFromProfile() {
+    final p = AuthStore.instance.value.profile;
+    if (p == null) return;
+    _nameController.text = (p['first_name'] as String?)?.trim() ?? '';
+    _lastNameController.text = (p['last_name'] as String?)?.trim() ?? '';
+    final phone = (p['phone'] as String?)?.trim() ?? '';
+    if (phone.isNotEmpty) {
+      final digits = phone.replaceAll(RegExp(r'\D'), '');
+      final last9 = digits.length > 9
+          ? digits.substring(digits.length - 9)
+          : digits;
+      final buf = StringBuffer();
+      for (var i = 0; i < last9.length; i++) {
+        if (i == 3 || i == 6) buf.write(' ');
+        buf.write(last9[i]);
+      }
+      _phoneController.text = buf.toString();
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -147,7 +188,7 @@ class _ProviderRegistrationScreenState
       case 2:
         final email = _emailController.text.trim();
         final emailOk = email.isEmpty || email.contains('@');
-        final phoneOk = _phoneController.text.replaceAll(' ', '').length == 9;
+        final phoneOk = _isValidPeruPhone(_phoneController.text);
         final passwordOk =
             _passwordController.text.length >= 6 &&
             _passwordController.text == _confirmPasswordController.text;
@@ -1001,6 +1042,8 @@ class _Step3Contact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final phoneError = _peruPhoneError(phoneController.text);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.screenPaddingH,
@@ -1090,8 +1133,36 @@ class _Step3Contact extends StatelessWidget {
             label: 'Número de teléfono de contacto, 9 dígitos',
             child: _PhoneFieldPeru(
               controller: phoneController,
+              hasError: phoneError != null,
               onChanged: (_) => onChanged(),
             ),
+          ),
+
+          // ── Mensaje validacion telefono peruano ──
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            child: phoneError != null
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 4),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          size: 14,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          phoneError,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
 
           if (!isConversion) ...[
@@ -1510,65 +1581,10 @@ class _Step5Terms extends StatelessWidget {
 
           const SizedBox(height: AppSpacing.xxxl),
 
-          // ── Terminos y condiciones ──
-          Semantics(
-            toggled: acceptTerms,
-            label: 'Aceptar términos y condiciones',
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Checkbox(
-                    value: acceptTerms,
-                    onChanged: onToggleTerms,
-                    activeColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    side: const BorderSide(
-                      color: AppColors.neutral400,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => onToggleTerms(!acceptTerms),
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Acepto los ',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: 'términos y condiciones de uso',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          const TextSpan(text: ' y la '),
-                          TextSpan(
-                            text: 'política de privacidad de datos',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          const TextSpan(text: '.'),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          // ── Terminos y condiciones (enlaces abren WebView) ──
+          TermsAcceptanceCheckbox(
+            value: acceptTerms,
+            onChanged: onToggleTerms,
           ),
         ],
       ),
@@ -1729,10 +1745,15 @@ class _PasswordFormField extends StatelessWidget {
 
 /// Campo de telefono con bandera Peru +51, limitado a 9 digitos
 class _PhoneFieldPeru extends StatelessWidget {
-  const _PhoneFieldPeru({required this.controller, this.onChanged});
+  const _PhoneFieldPeru({
+    required this.controller,
+    this.onChanged,
+    this.hasError = false,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
+  final bool hasError;
 
   @override
   Widget build(BuildContext context) {
@@ -1743,7 +1764,10 @@ class _PhoneFieldPeru extends StatelessWidget {
       ),
       foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.neutral300),
+        border: Border.all(
+          color: hasError ? AppColors.error : AppColors.neutral300,
+          width: hasError ? 1.5 : 1,
+        ),
       ),
       child: Row(
         children: [

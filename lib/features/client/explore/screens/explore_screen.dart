@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../home/services/category_service.dart';
+import 'category_detail_screen.dart';
 
 /// Pantalla "Explorar": lista las categorías reales de servicio (InsForge).
 ///
@@ -185,7 +186,11 @@ class _ServiceListCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       child: InkWell(
-        onTap: () {}, // Sin lógica todavía.
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => CategoryDetailScreen(category: category),
+          ),
+        ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -267,7 +272,11 @@ class _ServiceGridCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       child: InkWell(
-        onTap: () {}, // Sin lógica todavía.
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => CategoryDetailScreen(category: category),
+          ),
+        ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),

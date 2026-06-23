@@ -62,7 +62,7 @@ class RealtimeService {
         debugPrint('Realtime: conectado (${socket.id})');
         // Re-suscribir todos los canales tras (re)conectar.
         for (final ch in _channels) {
-          socket.emit('REALTIME_SUBSCRIBE', {'channel': ch});
+          socket.emit('realtime:subscribe', {'channel': ch});
         }
       });
       socket.onDisconnect(
@@ -97,21 +97,21 @@ class RealtimeService {
     final added = _channels.add(channel);
     if (!added) return;
     if (isConnected) {
-      _socket!.emit('REALTIME_SUBSCRIBE', {'channel': channel});
+      _socket!.emit('realtime:subscribe', {'channel': channel});
     }
   }
 
   void unsubscribe(String channel) {
     _channels.remove(channel);
     if (isConnected) {
-      _socket!.emit('REALTIME_UNSUBSCRIBE', {'channel': channel});
+      _socket!.emit('realtime:unsubscribe', {'channel': channel});
     }
   }
 
   /// Publica un evento de cliente en un canal (debe estar suscrito).
   void publish(String channel, String event, Map<String, dynamic> payload) {
     if (!isConnected) return;
-    _socket!.emit('REALTIME_PUBLISH', {
+    _socket!.emit('realtime:publish', {
       'channel': channel,
       'event': event,
       'payload': payload,

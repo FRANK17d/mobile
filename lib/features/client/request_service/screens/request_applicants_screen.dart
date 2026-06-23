@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -204,7 +205,7 @@ class _ApplicantCard extends StatelessWidget {
                 radius: 24,
                 backgroundColor: AppColors.neutral200,
                 backgroundImage: applicant.avatarUrl != null
-                    ? NetworkImage(applicant.avatarUrl!)
+                    ? CachedNetworkImageProvider(applicant.avatarUrl!)
                     : null,
                 child: applicant.avatarUrl == null
                     ? const Icon(Icons.person, color: AppColors.neutral500)

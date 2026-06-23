@@ -11,6 +11,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/feedback/app_toast.dart';
+import '../../../core/widgets/inputs/otp_code_input.dart';
 import '../services/auth_service.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -434,21 +435,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   static const _otpLength = 6;
   static const _resendSeconds = 30;
 
-  final List<TextEditingController> _controllers = List.generate(
-    _otpLength,
-    (_) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(
-    _otpLength,
-    (_) => FocusNode(),
-  );
   final _authService = AuthService();
 
   Timer? _timer;
   int _secondsRemaining = _resendSeconds;
   bool _canResend = false;
   bool _isVerifying = false;
-  bool _isApplyingOtp = false;
+  String _otp = '';
   String? _errorMessage;
 
   String get _maskedEmail {
@@ -464,34 +457,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return '${name.substring(0, 3)}***$domain';
   }
 
-  String get _otpValue {
-    return _controllers.map((c) => c.text).join();
-  }
-
-  bool get _isOtpComplete => _otpValue.length == _otpLength;
-
   @override
   void initState() {
     super.initState();
     _startTimer();
-
-    // Solicitar foco en el primer campo tras build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _focusNodes[0].requestFocus();
-      }
-    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
     super.dispose();
   }
 
@@ -544,7 +518,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Future<void> _onVerificarTap() async {
     _dismissKeyboard();
-    if (!_isOtpComplete || _isVerifying) return;
+    if (_otp.length != _otpLength || _isVerifying) return;
 
     setState(() {
       _isVerifying = true;
@@ -553,7 +527,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     final resetToken = await _authService.exchangePasswordResetCode(
       email: widget.email,
-      code: _otpValue,
+      code: _otp,
     );
 
     if (!mounted) return;
@@ -573,105 +547,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  void _setOtpDigit(int index, String value) {
-    _controllers[index].value = TextEditingValue(
-      text: value,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-  }
-
-  void _placeCursorAtStart(int index) {
-    _controllers[index].selection = const TextSelection.collapsed(offset: 0);
-  }
-
-  void _fillOtpFrom(int startIndex, String digits) {
-    _isApplyingOtp = true;
-
-    final normalizedDigits = digits.replaceAll(RegExp(r'\D'), '');
-    for (var i = 0; i < normalizedDigits.length; i++) {
-      final targetIndex = startIndex + i;
-      if (targetIndex >= _controllers.length) break;
-      _setOtpDigit(targetIndex, normalizedDigits[i]);
-    }
-
-    _isApplyingOtp = false;
-
-    final nextEmptyIndex = _controllers.indexWhere((controller) {
-      return controller.text.isEmpty;
-    });
-    final focusIndex = nextEmptyIndex == -1
-        ? _controllers.length - 1
-        : nextEmptyIndex;
-    _focusNodes[focusIndex].requestFocus();
-    _placeCursorAtStart(focusIndex);
-
-    setState(() => _errorMessage = null);
-
-    if (_isOtpComplete && !_isVerifying) {
-      _onVerificarTap();
-    }
-  }
-
-  void _onOtpDigitChanged(String value, int index) {
-    if (_isApplyingOtp) return;
-
-    final digits = value.replaceAll(RegExp(r'\D'), '');
+  void _onOtpChanged(String code) {
+    _otp = code;
     if (_errorMessage != null) {
       setState(() => _errorMessage = null);
     }
-
-    if (digits.isEmpty) {
-      _setOtpDigit(index, '');
-      if (index > 0) {
-        _focusNodes[index - 1].requestFocus();
-        _placeCursorAtStart(index - 1);
-      }
-      setState(() {});
-      return;
-    }
-
-    if (digits.length > 2) {
-      _fillOtpFrom(index, digits);
-      return;
-    }
-
-    _isApplyingOtp = true;
-    _setOtpDigit(index, digits[0]);
-    _isApplyingOtp = false;
-
-    if (index < _controllers.length - 1) {
-      _focusNodes[index + 1].requestFocus();
-      _placeCursorAtStart(index + 1);
-    } else {
-      _placeCursorAtStart(index);
-    }
-
-    setState(() {});
-
-    if (_isOtpComplete && !_isVerifying) {
-      _onVerificarTap();
-    }
-  }
-
-  KeyEventResult _onOtpKeyEvent(int index, KeyEvent event) {
-    if (event is! KeyDownEvent ||
-        event.logicalKey != LogicalKeyboardKey.backspace ||
-        _controllers[index].text.isNotEmpty ||
-        index == 0) {
-      return KeyEventResult.ignored;
-    }
-
-    _setOtpDigit(index - 1, '');
-    _focusNodes[index - 1].requestFocus();
-    _placeCursorAtStart(index - 1);
-
-    if (_errorMessage != null) {
-      setState(() => _errorMessage = null);
-    } else {
-      setState(() {});
-    }
-
-    return KeyEventResult.handled;
   }
 
   @override
@@ -769,26 +649,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                         const SizedBox(height: AppSpacing.xxxl),
 
-                        // ── 6 cajas OTP ──
-                        Semantics(
-                          label:
-                              'Ingrese el código de verificación de 6 dígitos',
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: List.generate(_otpLength, (index) {
-                              return _OtpBox(
-                                controller: _controllers[index],
-                                focusNode: _focusNodes[index],
-                                hasError: _errorMessage != null,
-                                semanticsLabel: 'Dígito ${index + 1} de 6',
-                                onTap: () => _placeCursorAtStart(index),
-                                onChanged: (value) =>
-                                    _onOtpDigitChanged(value, index),
-                                onKeyEvent: (event) =>
-                                    _onOtpKeyEvent(index, event),
-                              );
-                            }),
-                          ),
+                        // ── Cajas OTP (widget compartido y robusto) ──
+                        OtpCodeInput(
+                          length: _otpLength,
+                          hasError: _errorMessage != null,
+                          onChanged: _onOtpChanged,
+                          onCompleted: (code) {
+                            _otp = code;
+                            _onVerificarTap();
+                          },
                         ),
 
                         const SizedBox(height: AppSpacing.xl),
@@ -852,11 +721,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   ),
                   child: Semantics(
                     button: true,
-                    enabled: _isOtpComplete && !_isVerifying,
+                    enabled: _otp.length == _otpLength && !_isVerifying,
                     label: 'Verificar código ingresado',
                     child: _GradientPillButton(
                       label: _isVerifying ? 'Verificando...' : 'Verificar',
-                      onTap: _isOtpComplete && !_isVerifying
+                      onTap: _otp.length == _otpLength && !_isVerifying
                           ? _onVerificarTap
                           : null,
                     ),
@@ -864,84 +733,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Caja individual para un digito OTP
-class _OtpBox extends StatelessWidget {
-  const _OtpBox({
-    required this.controller,
-    required this.focusNode,
-    required this.hasError,
-    required this.semanticsLabel,
-    required this.onTap,
-    required this.onChanged,
-    required this.onKeyEvent,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool hasError;
-  final String semanticsLabel;
-  final VoidCallback onTap;
-  final ValueChanged<String> onChanged;
-  final KeyEventResult Function(KeyEvent) onKeyEvent;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 50,
-      height: 58,
-      child: Semantics(
-        textField: true,
-        label: semanticsLabel,
-        child: Focus(
-          onKeyEvent: (_, event) => onKeyEvent(event),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.next,
-            cursorColor: AppColors.primary,
-            style: AppTypography.headingLarge.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-            ),
-            decoration: InputDecoration(
-              counterText: '',
-              filled: true,
-              fillColor: hasError
-                  ? AppColors.error.withValues(alpha: 0.06)
-                  : AppColors.neutral100,
-              contentPadding: EdgeInsets.zero,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                borderSide: BorderSide(
-                  color: hasError ? AppColors.error : Colors.transparent,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                borderSide: BorderSide(
-                  color: hasError ? AppColors.error : Colors.transparent,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                borderSide: BorderSide(
-                  color: hasError ? AppColors.error : AppColors.primary,
-                  width: 2,
-                ),
-              ),
-            ),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onTap: onTap,
-            onChanged: onChanged,
           ),
         ),
       ),

@@ -59,7 +59,7 @@ abstract final class AppStrings {
   static const String continueBtn = 'Continuar';
 
   // Home
-  static const String homeQuestion = '¿Necesitas un servicio?';
+  static const String homeQuestion = '¿Te ayudo a solucionar algo?';
   static const String homeExplore = 'Explorar';
 
   // Client
@@ -102,7 +102,7 @@ abstract final class AppStrings {
       '🇵🇪 ¡tokeplus.app es 100% peruana!\n'
       'Conectá con personas que ofrecen o necesitan servicios como '
       'albañilería, pintura, plomería y más. 🔨🪛🔧\n\n'
-      '💡 ¿Tienes un oficio? ¿Necesitás una mano?\n'
+      '💡 ¿Tenés un oficio? ¿Necesitás una mano?\n'
       '¡Esta app es para vos!\n\n'
       '📲 Descargala gratis acá: https://tokeplus.app/#descargar';
   static const String logoutSuccess = 'Sesión cerrada';

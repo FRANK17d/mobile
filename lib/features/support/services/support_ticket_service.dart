@@ -1,8 +1,30 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/insforge_client.dart';
+
+/// Un mensaje de un ticket de soporte.
+class TicketMessage {
+  const TicketMessage({
+    required this.body,
+    required this.isAdmin,
+    this.createdAt,
+  });
+
+  final String body;
+  final bool isAdmin;
+  final DateTime? createdAt;
+
+  factory TicketMessage.fromJson(Map<String, dynamic> j) => TicketMessage(
+    body: j['body'] as String? ?? '',
+    isAdmin: j['is_admin'] as bool? ?? false,
+    createdAt: j['created_at'] != null
+        ? DateTime.tryParse(j['created_at'] as String)
+        : null,
+  );
+}
 
 class SupportTicketService {
   final InsForgeClient _client = InsForgeClient();
@@ -68,6 +90,78 @@ class SupportTicketService {
     } catch (e) {
       debugPrint('Exception createTicket: $e');
       return null;
+    }
+  }
+
+  /// Ticket más reciente del usuario (para retomar la conversación), o null.
+  Future<({String id, String status})?> getLatestTicket() async {
+    try {
+      final userId = await _client.getCurrentUserId();
+      if (userId == null || userId.isEmpty) return null;
+      final resp = await _client.get(
+        '/api/database/records/support_tickets'
+        '?user_id=eq.$userId&order=created_at.desc&limit=1',
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(resp.body);
+        if (data is List && data.isNotEmpty) {
+          final t = data.first as Map<String, dynamic>;
+          return (
+            id: t['id'] as String,
+            status: t['status'] as String? ?? 'open',
+          );
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('getLatestTicket error: $e');
+      return null;
+    }
+  }
+
+  /// Mensajes de un ticket, en orden cronológico.
+  Future<List<TicketMessage>> getMessages(String ticketId) async {
+    try {
+      final resp = await _client.get(
+        '/api/database/records/ticket_messages'
+        '?ticket_id=eq.$ticketId&order=created_at.asc',
+      );
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final data = jsonDecode(resp.body);
+        if (data is List) {
+          return data
+              .map((e) => TicketMessage.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      return const [];
+    } catch (e) {
+      debugPrint('getMessages error: $e');
+      return const [];
+    }
+  }
+
+  /// Envía un mensaje del usuario a un ticket existente.
+  Future<bool> sendMessage(String ticketId, String body) async {
+    try {
+      final userId = await _client.getCurrentUserId();
+      if (userId == null || userId.isEmpty) return false;
+      final resp = await _client.post(
+        '/api/database/records/ticket_messages',
+        body: [
+          {
+            'ticket_id': ticketId,
+            'sender_id': userId,
+            'body': _trim(body, 2000),
+            'is_admin': false,
+          },
+        ],
+        requireAuth: true,
+      );
+      return resp.statusCode >= 200 && resp.statusCode < 300;
+    } catch (e) {
+      debugPrint('sendMessage error: $e');
+      return false;
     }
   }
 

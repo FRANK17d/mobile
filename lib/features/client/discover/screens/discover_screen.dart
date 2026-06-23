@@ -14,6 +14,9 @@ import '../../home/widgets/success_stories_section.dart';
 import '../../how_it_works/screens/how_it_works_screen.dart';
 import '../../how_it_works/widgets/order_type_sheet.dart';
 import '../../request_service/screens/request_service_wizard_screen.dart';
+import '../../../auth/screens/account_prompt_screen.dart';
+import '../../orders/screens/public_requests_screen.dart';
+import '../../explore/screens/providers_list_screen.dart';
 
 /// Pantalla "Descubrir".
 ///
@@ -24,6 +27,13 @@ class DiscoverScreen extends StatelessWidget {
   const DiscoverScreen({super.key});
 
   Future<void> _openRequestFlow(BuildContext context) async {
+    // Sin sesión: mostrar el prompt "¿Tenés una cuenta?".
+    if (!AuthStore.instance.value.isAuthenticated) {
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(builder: (_) => const AccountPromptScreen()),
+      );
+      return;
+    }
     final type = await showOrderTypeSheet(context);
     if (type == null || !context.mounted) return;
     await Navigator.of(context).push(
@@ -37,6 +47,18 @@ class DiscoverScreen extends StatelessWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()));
+  }
+
+  void _openPublicRequests(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const PublicRequestsScreen()),
+    );
+  }
+
+  void _openProviders(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ProvidersListScreen()),
+    );
   }
 
   @override
@@ -79,7 +101,10 @@ class DiscoverScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── 1. Creciendo juntos ──
-              const _GrowingTogetherSection(),
+              _GrowingTogetherSection(
+                onPedidos: () => _openPublicRequests(context),
+                onPrestadores: () => _openProviders(context),
+              ),
               const SizedBox(height: AppSpacing.xxl),
 
               // ── 2. Soluciones con los mejores ──
@@ -108,11 +133,7 @@ class DiscoverScreen extends StatelessWidget {
               const SuccessStoriesSection(),
               const SizedBox(height: AppSpacing.xxl),
 
-              // ── 7. Noticias y novedades ──
-              const _NewsSection(),
-              const SizedBox(height: AppSpacing.xxl),
-
-              // ── 8. Nuestras redes sociales (reutilizado del Home) ──
+              // ── 7. Nuestras redes sociales (reutilizado del Home) ──
               const SocialMediaSection(),
             ],
           ),
@@ -126,7 +147,13 @@ class DiscoverScreen extends StatelessWidget {
 // 1. Creciendo juntos: métricas de la plataforma
 // ─────────────────────────────────────────────────────────
 class _GrowingTogetherSection extends StatelessWidget {
-  const _GrowingTogetherSection();
+  const _GrowingTogetherSection({
+    required this.onPedidos,
+    required this.onPrestadores,
+  });
+
+  final VoidCallback onPedidos;
+  final VoidCallback onPrestadores;
 
   @override
   Widget build(BuildContext context) {
@@ -150,18 +177,20 @@ class _GrowingTogetherSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
-        const _StatTile(
+        _StatTile(
           emoji: '📣',
           value: '+3650',
           label: 'Pedidos realizados',
           showChevron: true,
+          onTap: onPedidos,
         ),
         const SizedBox(height: AppSpacing.sm),
-        const _StatTile(
+        _StatTile(
           emoji: '🧰',
           value: '+2686',
           label: 'Prestadores de servicios',
           showChevron: true,
+          onTap: onPrestadores,
         ),
         const SizedBox(height: AppSpacing.sm),
         const _StatTile(
@@ -180,56 +209,62 @@ class _StatTile extends StatelessWidget {
     required this.value,
     required this.label,
     this.showChevron = false,
+    this.onTap,
   });
 
   final String emoji;
   final String value;
   final String label;
   final bool showChevron;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceWhite,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-        border: Border.all(color: AppColors.neutral200),
-      ),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 40)),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: AppTypography.displaySmall.copyWith(
-                    color: const Color(0xFF162033),
-                    fontWeight: FontWeight.w800,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceWhite,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+          border: Border.all(color: AppColors.neutral200),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 40)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: AppTypography.displaySmall.copyWith(
+                      color: const Color(0xFF162033),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                Text(
-                  label,
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: const Color(0xFF5F6678),
+                  Text(
+                    label,
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: const Color(0xFF5F6678),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          if (showChevron)
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.neutral500,
-              size: 26,
-            ),
-        ],
+            if (showChevron)
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.neutral500,
+                size: 26,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -734,83 +769,6 @@ class _NumberedStep extends StatelessWidget {
               color: const Color(0xFF4A5163),
               fontWeight: FontWeight.w500,
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// 7. Noticias y novedades
-// ─────────────────────────────────────────────────────────
-class _NewsSection extends StatelessWidget {
-  const _NewsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Noticias y novedades',
-          style: AppTypography.headingLarge.copyWith(
-            color: const Color(0xFF162033),
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Toke+ ganadora de InnovandoPY 2025',
-                      style: AppTypography.titleLarge.copyWith(
-                        color: const Color(0xFF162033),
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Recibe capital semilla para impulsar Toke+ al '
-                      'siguiente nivel.',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: const Color(0xFF5F6678),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              // Imagen de la noticia (placeholder hasta tener el asset real).
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                child: Container(
-                  width: 120,
-                  height: 90,
-                  color: AppColors.neutral100,
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.image_outlined,
-                    color: AppColors.neutral400,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ],

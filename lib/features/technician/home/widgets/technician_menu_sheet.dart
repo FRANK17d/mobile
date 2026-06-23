@@ -1,17 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../app/navigation/technician_shell.dart';
-import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
-import '../../../auth/services/auth_service.dart';
-import '../../../auth/services/auth_store.dart';
+import '../../../auth/screens/logout_transition_screen.dart';
 import '../../account/screens/credits_screen.dart';
 import '../../account/screens/toke_pro_screen.dart';
 
@@ -304,16 +301,11 @@ class _TechnicianMenuFullScreen extends StatelessWidget {
     );
   }
 
-  /// Cierra la sesión: limpia los tokens y vuelve al home como no autenticado.
-  Future<void> _handleLogout(BuildContext context) async {
-    final nav = Navigator.of(context, rootNavigator: true);
-    final router = GoRouter.of(context);
-
-    await AuthService().logout();
-    AuthStore.instance.setUnauthenticated();
-
-    nav.pop(); // Cierra el menú.
-    router.go(AppRoutes.clientHome);
+  /// Muestra la vista de cierre de sesión (logo animado), cierra la sesión y
+  /// vuelve al home como no autenticado. La propia vista limpia el menú del
+  /// stack imperativo antes de navegar.
+  void _handleLogout(BuildContext context) {
+    showLogoutTransition(context);
   }
 }
 

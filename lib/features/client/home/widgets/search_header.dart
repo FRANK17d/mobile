@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_images.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/badges/notification_badge.dart';
 
 /// Header del home: logo SVG toke+ en blanco.
 ///
@@ -39,10 +40,12 @@ class SearchHeader extends StatelessWidget {
           const Spacer(),
 
           if (isAuthenticated) ...[
-            // ── Campana de notificaciones ──
-            _HeaderIconButton(
-              icon: Icons.notifications_outlined,
-              onTap: onNotificationTap,
+            // ── Campana de notificaciones (con badge de no leídas) ──
+            NotificationBadge(
+              child: _HeaderIconButton(
+                icon: Icons.notifications_outlined,
+                onTap: onNotificationTap,
+              ),
             ),
             const SizedBox(width: 10),
             // ── Menu hamburguesa ──

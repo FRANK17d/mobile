@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/services/ai_service.dart';
 import '../../../../core/services/location_service.dart';
 import '../../../../core/widgets/buttons/gradient_pill_button.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
@@ -42,10 +46,15 @@ class _RequestServiceWizardScreenState
   final CategoryService _categoryService = CategoryService();
   final RequestService _requestService = RequestService();
   final LocationService _locationService = LocationService();
+  final ImagePicker _imagePicker = ImagePicker();
+  final AiService _ai = AiService();
 
   List<ServiceCategory> _categories = const [];
   ServiceCategory? _selectedCategory;
   District? _selectedDistrict;
+  bool _suggesting = false;
+  final List<XFile> _photos = [];
+  static const int _maxPhotos = 4;
 
   _DateMode _dateMode = _DateMode.flexible;
   int _selectedDay = 0;
@@ -81,6 +90,158 @@ class _RequestServiceWizardScreenState
     _descriptionController.dispose();
     _barrioController.dispose();
     super.dispose();
+  }
+
+  /// Agrega fotos desde galería (múltiple) o cámara, respetando el máximo.
+  Future<void> _pickPhotos({required bool fromCamera}) async {
+    try {
+      if (fromCamera) {
+        final shot = await _imagePicker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: 70,
+          maxWidth: 1600,
+        );
+        if (shot != null) _addPhotos([shot]);
+      } else {
+        final picked = await _imagePicker.pickMultiImage(
+          imageQuality: 70,
+          maxWidth: 1600,
+        );
+        if (picked.isNotEmpty) _addPhotos(picked);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showAppToast(
+        context,
+        message: 'No se pudo acceder a las fotos.',
+        type: ToastType.error,
+      );
+    }
+  }
+
+  void _addPhotos(List<XFile> incoming) {
+    if (!mounted) return;
+    setState(() {
+      final remaining = _maxPhotos - _photos.length;
+      if (remaining <= 0) return;
+      _photos.addAll(incoming.take(remaining));
+    });
+    if (incoming.length > _maxPhotos - (_photos.length - incoming.length)) {
+      showAppToast(
+        context,
+        message: 'Puedes adjuntar hasta $_maxPhotos fotos.',
+        type: ToastType.info,
+      );
+    }
+  }
+
+  void _removePhoto(int index) {
+    setState(() => _photos.removeAt(index));
+  }
+
+  /// Pide a la IA que sugiera la categoría a partir de la descripción.
+  Future<void> _suggestCategory() async {
+    final desc = _descriptionController.text.trim();
+    if (desc.length < 10) {
+      showAppToast(
+        context,
+        message: 'Escribe primero qué necesitas.',
+        type: ToastType.info,
+      );
+      return;
+    }
+    if (_categories.isEmpty || _suggesting) return;
+
+    setState(() => _suggesting = true);
+    final cats = _categories
+        .map((c) => {'id': c.id.toString(), 'name': c.name})
+        .toList();
+    final suggestion = await _ai.suggestCategory(desc, cats);
+    if (!mounted) return;
+
+    // 1) Resultado de la IA (si vino con confianza).
+    ServiceCategory? match;
+    if (suggestion != null && suggestion.isConfident) {
+      for (final c in _categories) {
+        if (c.id.toString() == suggestion.categoryId) {
+          match = c;
+          break;
+        }
+      }
+    }
+    // 2) Fallback local por palabras clave (funciona aunque la IA no responda).
+    match ??= _localGuessCategory(desc);
+
+    setState(() => _suggesting = false);
+
+    final chosen = match;
+    if (chosen != null) {
+      setState(() => _selectedCategory = chosen);
+      showAppToast(
+        context,
+        message: 'Categoría sugerida: ${chosen.name}',
+        type: ToastType.success,
+      );
+    } else {
+      showAppToast(
+        context,
+        message: 'No pudimos sugerir una categoría. Elígela manualmente.',
+        type: ToastType.info,
+      );
+    }
+  }
+
+  /// Normaliza texto: minúsculas y sin tildes/ñ, para comparar por palabras.
+  String _norm(String s) {
+    s = s.toLowerCase();
+    const from = 'áàäâéèëêíìïîóòöôúùüûñ';
+    const to = 'aaaaeeeeiiiioooouuuun';
+    final sb = StringBuffer();
+    for (final ch in s.split('')) {
+      final i = from.indexOf(ch);
+      sb.write(i >= 0 ? to[i] : ch);
+    }
+    return sb.toString();
+  }
+
+  /// Adivina la categoría localmente a partir de la descripción (palabras del
+  /// nombre + sinónimos). Devuelve null si nada coincide.
+  ServiceCategory? _localGuessCategory(String desc) {
+    final d = _norm(desc);
+    final synonyms = <(List<String>, String)>[
+      (['pint', 'cuadro', 'pared', 'mural', 'barniz'], 'pintur'),
+      (['electr', 'luz', 'enchufe', 'corto', 'cable', 'foco', 'tomacorr'], 'electr'),
+      (['plome', 'gasfi', 'cano', 'tuberi', 'fuga', 'desague', 'inodoro', 'grifo', 'caño'], 'gasf'),
+      (['limpie', 'limpiar', 'aseo'], 'limpie'),
+      (['carpint', 'mueble', 'madera', 'closet', 'ropero'], 'carpint'),
+      (['albani', 'cement', 'construc', 'ladrillo', 'tarrajeo'], 'alban'),
+      (['cerraj', 'llave', 'cerradura', 'candado', 'chapa'], 'cerraj'),
+      (['jardin', 'cesped', 'pasto', 'planta', 'poda'], 'jardin'),
+      (['mudanz', 'flete', 'carga', 'transport'], 'mudanz'),
+      (['aire', 'climatiz', 'refriger', 'split'], 'aire'),
+      (['comput', 'laptop', 'impresora', 'redes', 'software'], 'comput'),
+      (['cocin', 'chef', 'comida', 'banquet', 'reposter'], 'cocin'),
+      (['costur', 'sastr', 'bastas'], 'costur'),
+      (['mecan', 'auto', 'carro', 'motor'], 'mecan'),
+    ];
+
+    ServiceCategory? best;
+    var bestScore = 0;
+    for (final c in _categories) {
+      final name = _norm(c.name);
+      var score = 0;
+      for (final w in name.split(RegExp(r'[^a-z]+'))) {
+        if (w.length >= 4 && d.contains(w)) score += 2;
+      }
+      for (final (keys, hint) in synonyms) {
+        if (name.contains(hint) && keys.any(d.contains)) score += 3;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = c;
+      }
+    }
+    return bestScore > 0 ? best : null;
   }
 
   /// Valida el paso actual antes de avanzar/publicar.
@@ -155,6 +316,13 @@ class _RequestServiceWizardScreenState
     // GPS best-effort: si se niega, el pedido se publica igual (sin coords).
     final pos = await _locationService.getCurrentLatLng();
 
+    // Subir fotos (best-effort): las que fallen se omiten.
+    final imageUrls = _photos.isEmpty
+        ? const <String>[]
+        : await _requestService.uploadPhotos(
+            _photos.map((x) => x.path).toList(),
+          );
+
     final result = await _requestService.createRequest(
       categoryId: _selectedCategory!.id,
       districtId: _selectedDistrict!.id,
@@ -167,6 +335,7 @@ class _RequestServiceWizardScreenState
       address: _barrioController.text.trim().isEmpty
           ? null
           : _barrioController.text.trim(),
+      imageUrls: imageUrls.isEmpty ? null : imageUrls,
     );
 
     if (!mounted) return;
@@ -174,7 +343,9 @@ class _RequestServiceWizardScreenState
 
     if (result.success) {
       Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const RequestResultScreen()),
+        MaterialPageRoute<void>(
+          builder: (_) => RequestResultScreen(requestId: result.requestId),
+        ),
       );
     } else {
       showAppToast(
@@ -325,8 +496,17 @@ class _RequestServiceWizardScreenState
       case 1:
         return _DescriptionStep(
           controller: _descriptionController,
+          categories: _categories,
           selectedCategory: _selectedCategory,
+          onSelectCategory: (c) => setState(() => _selectedCategory = c),
           onPickCategory: _openCategoryPicker,
+          onDescriptionChanged: () => setState(() {}),
+          photos: _photos,
+          onAddFromGallery: () => _pickPhotos(fromCamera: false),
+          onAddFromCamera: () => _pickPhotos(fromCamera: true),
+          onRemovePhoto: _removePhoto,
+          suggesting: _suggesting,
+          onSuggestCategory: _suggestCategory,
         );
       case 2:
         return _LocationStep(
@@ -355,16 +535,36 @@ class _RequestServiceWizardScreenState
 class _DescriptionStep extends StatelessWidget {
   const _DescriptionStep({
     required this.controller,
+    required this.categories,
     required this.selectedCategory,
+    required this.onSelectCategory,
     required this.onPickCategory,
+    required this.onDescriptionChanged,
+    required this.photos,
+    required this.onAddFromGallery,
+    required this.onAddFromCamera,
+    required this.onRemovePhoto,
+    required this.suggesting,
+    required this.onSuggestCategory,
   });
 
   final TextEditingController controller;
+  final List<ServiceCategory> categories;
   final ServiceCategory? selectedCategory;
+  final ValueChanged<ServiceCategory> onSelectCategory;
   final VoidCallback onPickCategory;
+  final VoidCallback onDescriptionChanged;
+  final List<XFile> photos;
+  final VoidCallback onAddFromGallery;
+  final VoidCallback onAddFromCamera;
+  final ValueChanged<int> onRemovePhoto;
+  final bool suggesting;
+  final VoidCallback onSuggestCategory;
 
   @override
   Widget build(BuildContext context) {
+    final descError =
+        controller.text.isNotEmpty && controller.text.trim().length < 10;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,14 +577,38 @@ class _DescriptionStep extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // ── Categoría ──
-        _FieldLabel('Categoría'),
-        const SizedBox(height: AppSpacing.xs),
-        FakeSelectField(
-          value: selectedCategory == null
-              ? 'Elegir categoría'
-              : '${selectedCategory!.emoji} ${selectedCategory!.name}',
-          onTap: onPickCategory,
+        // ── Categoría: carrusel de emojis + "Ver todos" ──
+        Row(
+          children: [
+            Expanded(child: _FieldLabel('Categoría')),
+            GestureDetector(
+              onTap: onPickCategory,
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Ver todos',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _CategoryEmojiCarousel(
+          categories: categories,
+          selected: selectedCategory,
+          onSelect: onSelectCategory,
         ),
 
         const SizedBox(height: AppSpacing.lg),
@@ -399,7 +623,11 @@ class _DescriptionStep extends StatelessWidget {
                 ),
               ),
             ),
-            const HelpBadge(),
+            const HelpBadge(
+              message:
+                  'Describe lo mejor posible tu necesidad, así los trabajadores '
+                  'podrán enviarte un presupuesto más preciso y detallado.',
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -410,15 +638,25 @@ class _DescriptionStep extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              color: descError ? AppColors.error : AppColors.border,
+              width: descError ? 1.5 : 1,
+            ),
           ),
           child: TextField(
             controller: controller,
             maxLines: 4,
+            onChanged: (_) => onDescriptionChanged(),
             style: AppTypography.bodyLarge.copyWith(
               color: AppColors.textPrimary,
             ),
-            decoration: InputDecoration.collapsed(
+            decoration: InputDecoration(
+              isCollapsed: true,
+              filled: false,
+              contentPadding: EdgeInsets.zero,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
               hintText:
                   'ej: Algún albañil que termine mi casa...\n'
                   'Quiero pintar mi sala, 30 metros cuadrado',
@@ -429,17 +667,259 @@ class _DescriptionStep extends StatelessWidget {
           ),
         ),
 
+        // ── Validación inline (mínimo 10 caracteres) ──
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.topLeft,
+          child: descError
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 4),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: AppColors.error,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Mínimo 10 caracteres',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+
+        const SizedBox(height: AppSpacing.sm),
+
+        // ── Sugerir categoría con IA ──
+        Align(
+          alignment: Alignment.centerLeft,
+          child: GestureDetector(
+            onTap: suggesting ? null : onSuggestCategory,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (suggesting)
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  else
+                    const Icon(Icons.auto_awesome,
+                        size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    suggesting ? 'Pensando...' : 'Sugerir categoría con IA',
+                    style: AppTypography.labelLarge.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
         const SizedBox(height: AppSpacing.lg),
 
-        // ── Adjuntar fotos ──
+        // ── Adjuntar fotos (opcional) ──
+        Text(
+          'Agrega fotos (opcional)',
+          style: AppTypography.titleMedium.copyWith(
+            color: AppColors.secondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(
+          'Ayuda al técnico a entender mejor el trabajo.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
-            _PhotoButton(icon: Icons.photo_library_outlined, onTap: () {}),
+            _PhotoButton(
+              icon: Icons.photo_library_outlined,
+              onTap: onAddFromGallery,
+            ),
             const SizedBox(width: AppSpacing.sm),
-            _PhotoButton(icon: Icons.photo_camera_outlined, onTap: () {}),
+            _PhotoButton(
+              icon: Icons.photo_camera_outlined,
+              onTap: onAddFromCamera,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            // ── Miniaturas ──
+            Expanded(
+              child: SizedBox(
+                height: 64,
+                child: photos.isEmpty
+                    ? const SizedBox.shrink()
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: photos.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(width: AppSpacing.xs),
+                        itemBuilder: (_, i) => _PhotoThumb(
+                          file: photos[i],
+                          onRemove: () => onRemovePhoto(i),
+                        ),
+                      ),
+              ),
+            ),
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Carrusel horizontal de categorías (emoji + nombre) para elegir rápido.
+/// Se desplaza automáticamente para mostrar la categoría seleccionada.
+class _CategoryEmojiCarousel extends StatefulWidget {
+  const _CategoryEmojiCarousel({
+    required this.categories,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<ServiceCategory> categories;
+  final ServiceCategory? selected;
+  final ValueChanged<ServiceCategory> onSelect;
+
+  @override
+  State<_CategoryEmojiCarousel> createState() => _CategoryEmojiCarouselState();
+}
+
+class _CategoryEmojiCarouselState extends State<_CategoryEmojiCarousel> {
+  final ScrollController _controller = ScrollController();
+
+  // Ancho de cada ítem (68) + separador (AppSpacing.sm).
+  static const double _itemExtent = 68 + AppSpacing.sm;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CategoryEmojiCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Al cambiar la selección (o al resolverse una preseleccionada), centrarla.
+    if (widget.selected?.id != oldWidget.selected?.id ||
+        widget.categories.length != oldWidget.categories.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+    }
+  }
+
+  void _scrollToSelected() {
+    final sel = widget.selected;
+    if (sel == null || !_controller.hasClients) return;
+    final i = widget.categories.indexWhere((c) => c.id == sel.id);
+    if (i < 0) return;
+    final viewport = _controller.position.viewportDimension;
+    final target = (i * _itemExtent) - (viewport / 2) + (_itemExtent / 2);
+    final clamped = target.clamp(0.0, _controller.position.maxScrollExtent);
+    _controller.animateTo(
+      clamped,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.categories.isEmpty) {
+      return const SizedBox(
+        height: 96,
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: widget.categories.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (_, i) {
+          final c = widget.categories[i];
+          final sel = widget.selected?.id == c.id;
+          return GestureDetector(
+            onTap: () => widget.onSelect(c),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 68,
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 60,
+                    height: 60,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: sel ? AppColors.primarySurface : Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: sel ? AppColors.primary : AppColors.border,
+                        width: sel ? 2 : 1,
+                      ),
+                    ),
+                    child: Text(c.emoji, style: const TextStyle(fontSize: 28)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    c.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: sel ? AppColors.primary : AppColors.textSecondary,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -464,6 +944,45 @@ class _PhotoButton extends StatelessWidget {
         ),
         child: Icon(icon, color: AppColors.textSecondary, size: 26),
       ),
+    );
+  }
+}
+
+class _PhotoThumb extends StatelessWidget {
+  const _PhotoThumb({required this.file, required this.onRemove});
+
+  final XFile file;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          child: Image.file(
+            File(file.path),
+            width: 64,
+            height: 64,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned(
+          top: 2,
+          right: 2,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -507,7 +1026,11 @@ class _LocationStep extends StatelessWidget {
         Row(
           children: [
             Expanded(child: _FieldLabel('Distrito')),
-            const HelpBadge(),
+            const HelpBadge(
+              message:
+                  'Elegí el distrito donde se realizará el trabajo para '
+                  'mostrarte prestadores cercanos.',
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -568,25 +1091,34 @@ class _DateStep extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
 
-        // ── Modos ──
+        // ── Modos (en una sola fila) ──
         Row(
           children: [
-            SelectableChip(
-              label: 'Soy flexible',
-              selected: mode == _DateMode.flexible,
-              onTap: () => onModeChanged(_DateMode.flexible),
+            Expanded(
+              child: SelectableChip(
+                expand: true,
+                label: 'Soy flexible',
+                selected: mode == _DateMode.flexible,
+                onTap: () => onModeChanged(_DateMode.flexible),
+              ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            SelectableChip(
-              label: 'Elegir fecha',
-              selected: mode == _DateMode.choose,
-              onTap: () => onModeChanged(_DateMode.choose),
+            Expanded(
+              child: SelectableChip(
+                expand: true,
+                label: 'Elegir fecha',
+                selected: mode == _DateMode.choose,
+                onTap: () => onModeChanged(_DateMode.choose),
+              ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            SelectableChip(
-              label: 'Urgente',
-              selected: mode == _DateMode.urgent,
-              onTap: () => onModeChanged(_DateMode.urgent),
+            Expanded(
+              child: SelectableChip(
+                expand: true,
+                label: 'Urgente',
+                selected: mode == _DateMode.urgent,
+                onTap: () => onModeChanged(_DateMode.urgent),
+              ),
             ),
           ],
         ),
@@ -605,61 +1137,98 @@ class _DateStep extends StatelessWidget {
           onChanged: onInvoiceChanged,
           label: 'Necesito factura legal',
           showHelp: true,
+          helpMessage:
+              'Activá esta opción si necesitás comprobante (boleta o factura) '
+              'por el servicio.',
         ),
       ],
     );
   }
 }
 
-/// Tira horizontal de los próximos 5 días.
-class _DayStrip extends StatelessWidget {
+/// Tira horizontal de días, scrolleable. Empieza mostrando 2 semanas y, al
+/// elegir uno de los últimos, agrega más días automáticamente (scroll infinito).
+class _DayStrip extends StatefulWidget {
   const _DayStrip({required this.selected, required this.onSelected});
 
   final int selected;
   final ValueChanged<int> onSelected;
 
+  @override
+  State<_DayStrip> createState() => _DayStripState();
+}
+
+class _DayStripState extends State<_DayStrip> {
+  final ScrollController _controller = ScrollController();
+  int _count = 5;
+
+  static const double _itemWidth = 60;
+  static const double _gap = AppSpacing.sm;
+
   static const _weekdays = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   static const _months = [
-    'ENE',
-    'FEB',
-    'MAR',
-    'ABR',
-    'MAY',
-    'JUN',
-    'JUL',
-    'AGO',
-    'SEP',
-    'OCT',
-    'NOV',
-    'DIC',
+    'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+    'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
   ];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTap(int i) {
+    widget.onSelected(i);
+    // Al elegir el último día visible, aparece el siguiente (uno a uno) y se
+    // desplaza para mostrarlo.
+    if (i == _count - 1) {
+      setState(() => _count += 1);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_controller.hasClients) return;
+        _controller.animateTo(
+          _controller.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final days = List.generate(5, (i) => now.add(Duration(days: i)));
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: AppColors.backgroundTertiary,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
       ),
-      child: Row(
-        children: List.generate(days.length, (i) {
-          final d = days[i];
-          final isSel = i == selected;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onSelected(i),
+      child: SizedBox(
+        height: 90,
+        child: ListView.separated(
+          controller: _controller,
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          itemCount: _count,
+          separatorBuilder: (_, _) => const SizedBox(width: _gap),
+          itemBuilder: (_, i) {
+            final d = now.add(Duration(days: i));
+            final isSel = i == widget.selected;
+            return GestureDetector(
+              onTap: () => _onTap(i),
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
+                width: _itemWidth,
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 decoration: BoxDecoration(
                   color: isSel ? AppColors.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       _weekdays[d.weekday - 1],
@@ -687,9 +1256,9 @@ class _DayStrip extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ),
     );
   }

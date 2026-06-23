@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_images.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/services/biometric_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -36,6 +37,20 @@ class _LoginScreenState extends State<LoginScreen> {
   // mensaje accesible bajo cada campo.
   String? _emailError;
   String? _passwordError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBiometric());
+  }
+
+  /// Si el usuario activó el acceso biométrico, lanza el prompt de huella
+  /// automáticamente al abrir el login (sin botón).
+  Future<void> _checkBiometric() async {
+    if (!await BiometricService.instance.isEnabled()) return;
+    if (!mounted) return;
+    _handleBiometricLogin();
+  }
 
   @override
   void dispose() {
@@ -290,9 +305,24 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final profile = await authService.getMyTechnicianProfile();
+    await _completeLogin(email, password, userId: userId);
+  }
 
+  /// Carga el perfil, persiste la sesión y navega al home correspondiente.
+  /// Al reloguear con contraseña ofrece activar la biometría.
+  Future<void> _completeLogin(
+    String email,
+    String password, {
+    String? userId,
+    bool fromBiometric = false,
+  }) async {
+    final profile = await AuthService().getMyTechnicianProfile();
     if (!mounted) return;
+
+    if (!fromBiometric) {
+      await _maybeOfferBiometric(email, password, userId);
+      if (!mounted) return;
+    }
 
     setState(() => _isLoggingIn = false);
 
@@ -304,6 +334,107 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       context.go(AppRoutes.clientHome);
     }
+  }
+
+  /// Si el equipo soporta biometría y aún no está activada para ESTE usuario,
+  /// pregunta si quiere activarla con las credenciales que acaba de usar.
+  Future<void> _maybeOfferBiometric(
+    String email,
+    String password,
+    String? userId,
+  ) async {
+    final bio = BiometricService.instance;
+    // Ya activada para este mismo usuario: no volver a preguntar.
+    if (await bio.isEnabled() && await bio.enabledUserId() == userId) return;
+    if (!await bio.isDeviceSupported()) return;
+    if (!mounted) return;
+
+    final wants = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        icon: const Icon(
+          Icons.fingerprint_rounded,
+          color: AppColors.primary,
+          size: 44,
+        ),
+        title: Text(
+          'Activar acceso con huella',
+          textAlign: TextAlign.center,
+          style: AppTypography.headingSmall.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: Text(
+          'La próxima vez podrás entrar con tu huella o rostro, sin escribir tu '
+          'contraseña.',
+          textAlign: TextAlign.center,
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Ahora no',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('Activar'),
+          ),
+        ],
+      ),
+    );
+
+    if (wants != true || !mounted) return;
+    final ok = await bio.enable(
+      email: email,
+      password: password,
+      userId: userId,
+    );
+    if (!mounted) return;
+    if (ok) {
+      showAppToast(
+        context,
+        message: 'Acceso biométrico activado.',
+        type: ToastType.success,
+      );
+    }
+  }
+
+  /// Inicia sesión con las credenciales guardadas tras verificación biométrica.
+  Future<void> _handleBiometricLogin() async {
+    if (_isLoggingIn) return;
+    final creds = await BiometricService.instance.getCredentials();
+    if (!mounted || creds == null) return;
+
+    setState(() => _isLoggingIn = true);
+    final userId = await AuthService().login(creds.email, creds.password);
+    if (!mounted) return;
+
+    if (userId == null) {
+      setState(() => _isLoggingIn = false);
+      showAppToast(
+        context,
+        message: 'No pudimos iniciar con biometría. Usa tu contraseña.',
+        type: ToastType.error,
+      );
+      return;
+    }
+    await _completeLogin(creds.email, creds.password, fromBiometric: true);
   }
 
   void _showForgotPasswordModal(BuildContext context) {

@@ -1,19 +1,42 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../request_service/services/request_service.dart';
 import 'categories_carousel.dart';
 
 /// Burbuja hero del home con pregunta, buscador typewriter y categorias.
 class HeroBubble extends StatelessWidget {
-  const HeroBubble({super.key, this.onSearchTap, this.onCameraTap});
+  const HeroBubble({
+    super.key,
+    this.onSearchTap,
+    this.onCameraTap,
+    this.title,
+    this.myRequests = const [],
+    this.loadingOrders = false,
+    this.onOpenOrder,
+    this.onSeeAllOrders,
+  });
 
   final VoidCallback? onSearchTap;
   final VoidCallback? onCameraTap;
+
+  /// Título sobre el buscador. Si es null usa [AppStrings.homeQuestion].
+  final String? title;
+
+  /// Pedidos del cliente. Si hay, se muestran como carrusel "Tus pedidos" en
+  /// lugar del título.
+  final List<MyRequest> myRequests;
+
+  /// Mientras es true muestra un skeleton animado en lugar del carrusel/saludo.
+  final bool loadingOrders;
+  final ValueChanged<MyRequest>? onOpenOrder;
+  final VoidCallback? onSeeAllOrders;
 
   @override
   Widget build(BuildContext context) {
@@ -39,16 +62,39 @@ class HeroBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Titulo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Text(
-                  AppStrings.homeQuestion,
-                  style: AppTypography.headingLarge.copyWith(
-                    color: AppColors.neutral900,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 22,
-                  ),
+              // Encabezado: "Tus pedidos" (si hay) o el saludo. Sin skeleton:
+              // al llegar los pedidos, la card se expande y aparecen suave.
+              AnimatedSize(
+                duration: const Duration(milliseconds: 340),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOut,
+                  child: myRequests.isNotEmpty
+                      ? _OrdersStrip(
+                          key: const ValueKey('orders'),
+                          requests: myRequests,
+                          onOpenOrder: onOpenOrder,
+                          onSeeAll: onSeeAllOrders,
+                        )
+                      : Padding(
+                          key: const ValueKey('greeting'),
+                          padding: const EdgeInsets.symmetric(horizontal: 22),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              title ?? AppStrings.homeQuestion,
+                              maxLines: 1,
+                              style: AppTypography.headingLarge.copyWith(
+                                color: AppColors.neutral900,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 22,
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -56,7 +102,7 @@ class HeroBubble extends StatelessWidget {
               // Buscador con typewriter
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: GestureDetector(
+                child: _PressableScale(
                   onTap: onSearchTap,
                   child: Container(
                     height: AppSpacing.inputHeight,
@@ -83,7 +129,7 @@ class HeroBubble extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
+                        _PressableScale(
                           onTap: onCameraTap ?? onSearchTap,
                           child: Container(
                             width: 36,
@@ -124,6 +170,300 @@ class HeroBubble extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ─── "Tus pedidos": carrusel horizontal con snap dentro de la card ───
+class _OrdersStrip extends StatefulWidget {
+  const _OrdersStrip({
+    super.key,
+    required this.requests,
+    this.onOpenOrder,
+    this.onSeeAll,
+  });
+
+  final List<MyRequest> requests;
+  final ValueChanged<MyRequest>? onOpenOrder;
+  final VoidCallback? onSeeAll;
+
+  @override
+  State<_OrdersStrip> createState() => _OrdersStripState();
+}
+
+class _OrdersStripState extends State<_OrdersStrip> {
+  // Una tarjeta por vista (sin asomar la siguiente) y con snap automático.
+  final PageController _pc = PageController();
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Row(
+            children: [
+              Text(
+                'Tus pedidos',
+                style: AppTypography.headingLarge.copyWith(
+                  color: AppColors.neutral900,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: widget.onSeeAll,
+                behavior: HitTestBehavior.opaque,
+                child: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF6B7280),
+                  size: 26,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 192,
+          child: PageView.builder(
+            controller: _pc,
+            itemCount: widget.requests.length,
+            itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _HomeOrderCard(
+                request: widget.requests[i],
+                onTap: () => widget.onOpenOrder?.call(widget.requests[i]),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Etiqueta + colores del estado del pedido (versión compacta para el home).
+({String label, Color color, Color bg}) _homeStatusBadge(String status) {
+  switch (status) {
+    case 'pending_review':
+      return (label: 'En revisión', color: AppColors.primary, bg: const Color(0xFFFFF0ED));
+    case 'open':
+      return (label: 'Publicado', color: const Color(0xFF2563EB), bg: const Color(0xFFE7EEFD));
+    case 'assigned':
+      return (label: 'Asignado', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+    case 'in_progress':
+      return (label: 'En curso', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+    case 'completed':
+      return (label: 'Completado', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+    case 'cancelled':
+      return (label: 'Cancelado', color: AppColors.neutral600, bg: AppColors.neutral200);
+    case 'rejected':
+      return (label: 'No aprobado', color: AppColors.neutral600, bg: AppColors.neutral200);
+    default:
+      return (label: status, color: AppColors.neutral600, bg: AppColors.neutral200);
+  }
+}
+
+class _HomeOrderCard extends StatelessWidget {
+  const _HomeOrderCard({required this.request, required this.onTap});
+
+  final MyRequest request;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = _homeStatusBadge(request.status);
+    final title = request.title.isEmpty ? request.categoryName : request.title;
+    final thumb = request.thumbnailUrl;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.neutral50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.neutral200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Nº + estado ──
+          Row(
+            children: [
+              if (request.orderNumber != null)
+                Text(
+                  'Nº ${formatOrderNumber(request.orderNumber)}',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.textTertiary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: badge.bg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  badge.label,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: badge.color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // ── Contenido + miniatura ──
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (request.categoryEmoji.isNotEmpty) ...[
+                          Text(
+                            request.categoryEmoji,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.titleLarge.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 15,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            request.districtName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (thumb != null) ...[
+                const SizedBox(width: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: CachedNetworkImage(
+                      imageUrl: thumb,
+                      memCacheWidth: 160,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => const ColoredBox(
+                        color: AppColors.neutral200,
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: AppColors.neutral400,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // ── Más información ──
+          GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: double.infinity,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Text(
+                'Más información',
+                style: AppTypography.buttonMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Escala al presionar (feedback táctil) ───
+class _PressableScale extends StatefulWidget {
+  const _PressableScale({required this.child, this.onTap});
+
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  State<_PressableScale> createState() => _PressableScaleState();
+}
+
+class _PressableScaleState extends State<_PressableScale> {
+  bool _pressed = false;
+
+  void _set(bool value) {
+    if (mounted) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => _set(true),
+      onTapUp: (_) => _set(false),
+      onTapCancel: () => _set(false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
     );
   }
 }

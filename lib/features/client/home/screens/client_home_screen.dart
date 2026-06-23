@@ -4,15 +4,22 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/network/insforge_client.dart';
+import '../../../../core/services/realtime_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../auth/services/auth_store.dart';
-import '../../../technician/home/widgets/technician_menu_sheet.dart';
 import '../../discover/screens/discover_screen.dart';
 import '../../explore/screens/explore_screen.dart';
 import '../../how_it_works/screens/how_it_works_screen.dart';
+import '../../notifications/screens/client_notifications_screen.dart';
+import '../../orders/screens/my_requests_screen.dart';
+import '../../request_service/screens/order_review_screen.dart';
 import '../../request_service/screens/request_service_wizard_screen.dart';
+import '../../request_service/services/request_service.dart';
+import '../../../auth/screens/account_prompt_screen.dart';
+import '../widgets/client_menu_sheet.dart';
 import '../widgets/hero_bubble.dart';
 import '../widgets/home_mascot.dart';
 import '../widgets/search_header.dart';
@@ -37,26 +44,93 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   // correcto desde el primer frame (sin el parpadeo "no autenticado →
   // autenticado"). Reacciona en vivo a login/logout.
   AuthSnapshot _auth = AuthStore.instance.value;
+  final RequestService _requestService = RequestService();
+  List<MyRequest> _myRequests = const [];
+  bool _loadingRequests = false;
+
+  final List<VoidCallback> _rtUnsub = [];
+  String? _clientChannel;
 
   @override
   void initState() {
     super.initState();
     AuthStore.instance.notifier.addListener(_onAuthChanged);
+    RequestService.ordersChanged.addListener(_onOrdersChanged);
+    if (_auth.isAuthenticated) {
+      _loadMyRequests();
+      _setupRealtime();
+    }
   }
 
   @override
   void dispose() {
     AuthStore.instance.notifier.removeListener(_onAuthChanged);
+    RequestService.ordersChanged.removeListener(_onOrdersChanged);
+    _teardownRealtime();
     super.dispose();
   }
 
-  void _onAuthChanged() {
-    if (mounted) setState(() => _auth = AuthStore.instance.value);
+  /// Un pedido fue creado en otra pantalla: recarga la lista al volver.
+  void _onOrdersChanged() {
+    if (mounted && _auth.isAuthenticated) _loadMyRequests();
   }
 
-  static Future<void> _handleRefresh() async {
-    // TODO: Refresh data from API
-    await Future.delayed(const Duration(seconds: 1));
+  void _onAuthChanged() {
+    if (!mounted) return;
+    final auth = AuthStore.instance.value;
+    setState(() {
+      _auth = auth;
+      if (!auth.isAuthenticated) _myRequests = const [];
+    });
+    if (auth.isAuthenticated) {
+      _loadMyRequests();
+      _setupRealtime();
+    } else {
+      _teardownRealtime();
+    }
+  }
+
+  /// Suscribe el home al canal del cliente para reflejar en vivo cambios de
+  /// estado (p. ej. cuando el admin aprueba/rechaza) y nuevas postulaciones.
+  Future<void> _setupRealtime() async {
+    if (_clientChannel != null) return; // ya configurado
+    final rt = RealtimeService.instance;
+    await rt.connect();
+    final uid = await InsForgeClient().getCurrentUserId();
+    if (uid == null || !mounted) return;
+    _clientChannel = 'client:$uid';
+    rt.subscribe(_clientChannel!);
+    void refresh(Map<String, dynamic> _) {
+      if (mounted) _loadMyRequests();
+    }
+
+    _rtUnsub.add(rt.on('status_changed', refresh));
+    _rtUnsub.add(rt.on('new_application', refresh));
+  }
+
+  void _teardownRealtime() {
+    for (final off in _rtUnsub) {
+      off();
+    }
+    _rtUnsub.clear();
+    if (_clientChannel != null) {
+      RealtimeService.instance.unsubscribe(_clientChannel!);
+      _clientChannel = null;
+    }
+  }
+
+  Future<void> _loadMyRequests() async {
+    if (mounted) setState(() => _loadingRequests = true);
+    final list = await _requestService.getMyRequests();
+    if (!mounted) return;
+    setState(() {
+      _myRequests = list;
+      _loadingRequests = false;
+    });
+  }
+
+  Future<void> _handleRefresh() async {
+    if (_auth.isAuthenticated) await _loadMyRequests();
   }
 
   @override
@@ -87,12 +161,18 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   topPadding: padding.top,
                   isAuthenticated: _auth.isAuthenticated,
                   profileData: _auth.profile,
+                  myRequests: _auth.isAuthenticated ? _myRequests : const [],
+                  loadingOrders:
+                      _auth.isAuthenticated &&
+                      _loadingRequests &&
+                      _myRequests.isEmpty,
+                  onReloadOrders: _loadMyRequests,
                 ),
 
                 // ════════════════════════════════════════════
                 // ZONA CONTENIDO: promos, tecnicos, etc.
                 // ════════════════════════════════════════════
-                _ContentSection(),
+                const _ContentSection(),
 
                 // Espacio para el nav bar flotante
                 SizedBox(height: padding.bottom),
@@ -113,15 +193,37 @@ class _HeroSection extends StatelessWidget {
     required this.topPadding,
     this.isAuthenticated = false,
     this.profileData,
+    this.myRequests = const [],
+    this.loadingOrders = false,
+    this.onReloadOrders,
   });
 
   final double topPadding;
   final bool isAuthenticated;
   final Map<String, dynamic>? profileData;
+  final List<MyRequest> myRequests;
+  final bool loadingOrders;
+  final VoidCallback? onReloadOrders;
+
+  /// Título del hero: con sesión usa el nombre del usuario; sin sesión, la
+  /// pregunta genérica.
+  String _heroTitle() {
+    if (!isAuthenticated) return AppStrings.homeQuestion;
+    final first = (profileData?['first_name'] as String?)?.trim() ?? '';
+    if (first.isEmpty) return AppStrings.homeQuestion;
+    return '$first, ¿Algo que solucionar?';
+  }
 
   /// Abre el flujo "Pedir un servicio" (barra de búsqueda / ícono de cámara).
+  /// Sin sesión muestra el prompt "¿Tenés una cuenta?".
   void _openRequestService(BuildContext context) {
-    Navigator.of(context).push(
+    if (!isAuthenticated) {
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(builder: (_) => const AccountPromptScreen()),
+      );
+      return;
+    }
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => const RequestServiceWizardScreen(),
       ),
@@ -158,11 +260,16 @@ class _HeroSection extends StatelessWidget {
                   isAuthenticated: isAuthenticated,
                   onLoginTap: () => ctx.push(AppRoutes.login),
                   onMenuTap: () => isAuthenticated
-                      ? showTechnicianMenuSheet(ctx, profileData: profileData)
+                      ? showClientMenuSheet(ctx, profileData: profileData)
                       : showAppMenuSheet(ctx),
-                  onNotificationTap: () {
-                    // TODO: navegar a notificaciones
-                  },
+                  onNotificationTap: () => Navigator.of(
+                    ctx,
+                    rootNavigator: true,
+                  ).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ClientNotificationsScreen(),
+                    ),
+                  ),
                 ),
               ),
 
@@ -171,8 +278,26 @@ class _HeroSection extends StatelessWidget {
               // ── Burbuja hero (pregunta + buscador + categorias) ──
               Builder(
                 builder: (ctx) => HeroBubble(
+                  title: _heroTitle(),
+                  myRequests: myRequests,
+                  loadingOrders: loadingOrders,
                   onSearchTap: () => _openRequestService(ctx),
                   onCameraTap: () => _openRequestService(ctx),
+                  onOpenOrder: (req) => Navigator.of(ctx, rootNavigator: true)
+                      .push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              OrderReviewScreen(requestId: req.id, initial: req),
+                        ),
+                      )
+                      .then((_) => onReloadOrders?.call()),
+                  onSeeAllOrders: () => Navigator.of(ctx, rootNavigator: true)
+                      .push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const MyRequestsScreen(),
+                        ),
+                      )
+                      .then((_) => onReloadOrders?.call()),
                 ),
               ),
 
@@ -205,6 +330,8 @@ class _HeroSection extends StatelessWidget {
 // Content Section: explorar
 // ─────────────────────────────────────────────────────────
 class _ContentSection extends StatelessWidget {
+  const _ContentSection();
+
   @override
   Widget build(BuildContext context) {
     return Padding(

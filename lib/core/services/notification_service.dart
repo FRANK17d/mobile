@@ -139,6 +139,31 @@ class NotificationService {
     }
   }
 
+  /// Borra una notificación (swipe-to-delete). Optimista: la quita de la lista
+  /// local de inmediato y, si el RPC falla, recarga para re-sincronizar.
+  Future<void> deleteNotification(String notificationId) async {
+    final previous = notifications.value;
+    final updated = previous
+        .where((n) => n.id != notificationId)
+        .toList(growable: false);
+    notifications.value = updated;
+    unreadCount.value = updated.where((e) => !e.isRead).length;
+
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/delete_notification',
+        body: {'p_notification_id': notificationId},
+        requireAuth: true,
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        await loadHistory();
+      }
+    } catch (e) {
+      debugPrint('NotificationService.deleteNotification error: $e');
+      await loadHistory();
+    }
+  }
+
   void dispose() {
     _rtOff?.call();
     _rtOff = null;

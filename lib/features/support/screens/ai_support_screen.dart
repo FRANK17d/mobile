@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/services/ai_service.dart';
+import '../../../core/services/realtime_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -26,6 +27,10 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
   bool _creatingTicket = false;
   String? _ticketId;
 
+  VoidCallback? _rtOff;
+  String? _ticketChannel;
+  bool _loadingHistory = false;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +40,47 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
         isUser: false,
       ),
     );
+    _loadExistingTicket();
+  }
+
+  /// Retoma el último ticket del usuario (persistencia) y se suscribe a sus
+  /// mensajes en vivo (respuestas del admin).
+  Future<void> _loadExistingTicket() async {
+    final ticket = await _tickets.getLatestTicket();
+    // Solo retoma una conversación activa; los tickets cerrados no se recargan
+    // (se empieza un chat nuevo con la IA).
+    if (ticket == null || ticket.status == 'closed' || !mounted) return;
+    // Hay un ticket: mostramos el skeleton mientras llega el historial.
+    setState(() => _loadingHistory = true);
+    final msgs = await _tickets.getMessages(ticket.id);
+    if (!mounted) return;
+    setState(() {
+      _loadingHistory = false;
+      _ticketId = ticket.id;
+      for (final m in msgs) {
+        _messages.add(_ChatMessage(text: m.body, isUser: !m.isAdmin));
+      }
+    });
+    _subscribeTicket(ticket.id);
+    _scrollToBottom();
+  }
+
+  /// Suscribe el chat al canal del ticket para recibir respuestas del admin.
+  Future<void> _subscribeTicket(String ticketId) async {
+    if (_ticketChannel != null) return;
+    _ticketChannel = 'ticket:$ticketId';
+    final rt = RealtimeService.instance;
+    await rt.connect();
+    rt.subscribe(_ticketChannel!);
+    _rtOff = rt.on('new_ticket_message', (payload) {
+      if (!mounted) return;
+      // Solo los mensajes del admin (los propios ya están en pantalla).
+      if (payload['is_admin'] != true) return;
+      final body = payload['body'] as String?;
+      if (body == null || body.isEmpty) return;
+      setState(() => _messages.add(_ChatMessage(text: body, isUser: false)));
+      _scrollToBottom();
+    });
   }
 
   List<Map<String, String>> _buildHistory() {
@@ -56,6 +102,23 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
     _input.clear();
     _scrollToBottom();
 
+    // Si ya hay un ticket, el chat es con el agente humano (admin): el mensaje
+    // se guarda en el ticket y el admin lo ve en el panel.
+    if (_ticketId != null) {
+      final ok = await _tickets.sendMessage(_ticketId!, text);
+      if (!mounted) return;
+      setState(() => _sending = false);
+      if (!ok) {
+        showAppToast(
+          context,
+          message: 'No se pudo enviar el mensaje. Intenta de nuevo.',
+          type: ToastType.error,
+        );
+      }
+      return;
+    }
+
+    // Sin ticket: asistente con IA.
     final history = _buildHistory();
     final response = await _ai.supportChat(
       text,
@@ -96,14 +159,17 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
     final lastMessage = userMessages.isEmpty
         ? 'Necesito ayuda con TOKE+.'
         : userMessages.last;
-    final transcript = _messages
-        .map((m) => '${m.isUser ? 'Usuario' : 'Asistente'}: ${m.text}')
-        .join('\n\n');
+    // Guardamos solo lo que escribió el usuario como primer mensaje del ticket.
+    // (Antes se guardaba toda la transcripción, lo que hacía que el texto del
+    // asistente apareciera dentro de la burbuja del usuario al recargar.)
+    final firstMessage = userMessages.isEmpty
+        ? lastMessage
+        : userMessages.join('\n\n');
 
     setState(() => _creatingTicket = true);
     final ticketId = await _tickets.createTicket(
       subject: lastMessage,
-      message: transcript.isEmpty ? lastMessage : transcript,
+      message: firstMessage,
       category: 'mobile_support',
     );
 
@@ -115,12 +181,14 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
         _messages.add(
           const _ChatMessage(
             text:
-                'Listo, creé un ticket para soporte humano. Un administrador revisará tu caso desde el panel.',
+                'Listo, creé un ticket para soporte humano. Un administrador te '
+                'responderá por aquí mismo.',
             isUser: false,
           ),
         );
       }
     });
+    if (ticketId != null) _subscribeTicket(ticketId);
 
     showAppToast(
       context,
@@ -146,6 +214,10 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
 
   @override
   void dispose() {
+    _rtOff?.call();
+    if (_ticketChannel != null) {
+      RealtimeService.instance.unsubscribe(_ticketChannel!);
+    }
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -194,17 +266,19 @@ class _AiSupportScreenState extends State<AiSupportScreen> {
               onCreateTicket: _createHumanTicket,
             ),
             Expanded(
-              child: ListView.builder(
-                controller: _scroll,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: _messages.length + (_sending ? 1 : 0),
-                itemBuilder: (_, i) {
-                  if (i == _messages.length) {
-                    return const _TypingIndicator();
-                  }
-                  return _MessageBubble(message: _messages[i]);
-                },
-              ),
+              child: _loadingHistory
+                  ? const _ChatSkeleton()
+                  : ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: _messages.length + (_sending ? 1 : 0),
+                      itemBuilder: (_, i) {
+                        if (i == _messages.length) {
+                          return const _TypingIndicator();
+                        }
+                        return _MessageBubble(message: _messages[i]);
+                      },
+                    ),
             ),
             _Composer(controller: _input, sending: _sending, onSend: _send),
           ],
@@ -392,6 +466,79 @@ class _TypingIndicator extends StatelessWidget {
           shape: BoxShape.circle,
         ),
       ),
+    );
+  }
+}
+
+/// Skeleton animado mientras se carga el historial del ticket.
+class _ChatSkeleton extends StatefulWidget {
+  const _ChatSkeleton();
+
+  @override
+  State<_ChatSkeleton> createState() => _ChatSkeletonState();
+}
+
+class _ChatSkeletonState extends State<_ChatSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  )..repeat(reverse: true);
+
+  // Burbujas placeholder: (¿es del usuario?, ancho relativo).
+  static const List<(bool, double)> _bubbles = [
+    (false, 0.62),
+    (true, 0.45),
+    (false, 0.72),
+    (false, 0.5),
+    (true, 0.58),
+  ];
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final opacity = 0.4 + 0.4 * _ctrl.value;
+        return ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (final (isUser, w) in _bubbles)
+              Align(
+                alignment: isUser
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Opacity(
+                  opacity: opacity,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 5),
+                    height: 44,
+                    width: width * w,
+                    decoration: BoxDecoration(
+                      color: isUser
+                          ? AppColors.primary.withValues(alpha: 0.18)
+                          : AppColors.neutral200,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(isUser ? 16 : 4),
+                        bottomRight: Radius.circular(isUser ? 4 : 16),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
