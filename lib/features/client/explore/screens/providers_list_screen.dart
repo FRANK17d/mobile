@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../../technician/account/screens/technician_profile_preview_screen.dart';
 import '../services/explore_service.dart';
 
 /// Lista global de prestadores de servicios verificados (se abre desde
@@ -38,8 +38,15 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
     });
   }
 
-  void _soon() =>
-      showAppToast(context, message: 'Próximamente', type: ToastType.info);
+  void _openProfile(CategoryProvider provider) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TechnicianPublicPreviewScreen(
+          profileData: provider.toPublicProfileData(),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +135,7 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
                               const SizedBox(height: AppSpacing.md),
                           itemBuilder: (_, i) => _ProviderCard(
                             provider: _providers[i],
-                            onTap: _soon,
+                            onTap: () => _openProfile(_providers[i]),
                           ),
                         ),
                       ),
@@ -227,12 +234,14 @@ class _ProviderCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.verified,
-                        size: 16,
-                        color: Color(0xFF2D9CDB),
-                      ),
+                      if (provider.isVerified) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          size: 16,
+                          color: Color(0xFF2D9CDB),
+                        ),
+                      ],
                     ],
                   ),
                   if (provider.districtName != null &&

@@ -296,6 +296,10 @@ class _PublicProfileDetails extends StatelessWidget {
               height: 1.42,
             ),
           ),
+          if (data.showClientPaymentNotice) ...[
+            const SizedBox(height: AppSpacing.lg),
+            const _DirectPaymentNotice(),
+          ],
           const SizedBox(height: AppSpacing.xxl),
           _SectionTitle('Servicios que brinda'),
           const SizedBox(height: AppSpacing.lg),
@@ -1001,6 +1005,44 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+class _DirectPaymentNotice extends StatelessWidget {
+  const _DirectPaymentNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E8),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: const Color(0xFFFFD99A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.payments_outlined,
+            color: Color(0xFFB7791F),
+            size: 22,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'El pago de este servicio se coordina directamente con el técnico. TOKE+ no cobra, retiene ni procesa ese dinero.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: const Color(0xFF744210),
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RoundIconAction extends StatelessWidget {
   const _RoundIconAction({
     required this.icon,
@@ -1156,6 +1198,7 @@ class _TechnicianProfileViewData {
     required this.services,
     required this.joinedLabel,
     required this.isVerified,
+    required this.showClientPaymentNotice,
   });
 
   final Map<String, dynamic>? rawProfileData;
@@ -1169,6 +1212,7 @@ class _TechnicianProfileViewData {
   final List<_ServiceViewData> services;
   final String joinedLabel;
   final bool isVerified;
+  final bool showClientPaymentNotice;
 
   static String _joinedLabel(DateTime? d) {
     if (d == null) return 'Miembro de Toke+';
@@ -1221,6 +1265,7 @@ class _TechnicianProfileViewData {
       ),
       joinedLabel: _joinedLabel(joinedAt),
       isVerified: status == 'verified',
+      showClientPaymentNotice: profileData?['viewer_context'] == 'client',
       firstName: firstName.isEmpty ? 'Técnico' : firstName,
       fullName: fullName.isEmpty ? 'Técnico Toke+' : fullName,
       bio: _firstString(

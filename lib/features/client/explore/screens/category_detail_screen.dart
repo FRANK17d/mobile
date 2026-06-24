@@ -9,6 +9,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
 import '../../../auth/screens/account_prompt_screen.dart';
 import '../../../auth/services/auth_store.dart';
+import '../../../technician/account/screens/technician_profile_preview_screen.dart';
 import '../../home/services/category_service.dart';
 import '../../request_service/screens/request_service_wizard_screen.dart';
 import '../services/explore_service.dart';
@@ -91,6 +92,20 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     );
   }
 
+  void _openProviderProfile(CategoryProvider provider) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TechnicianPublicPreviewScreen(
+          profileData: provider.toPublicProfileData(
+            serviceName: widget.category.name,
+            serviceEmoji: widget.category.emoji,
+            serviceDescription: widget.category.description,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _soon() =>
       showAppToast(context, message: 'Próximamente', type: ToastType.info);
 
@@ -164,8 +179,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                   itemCount: _providers.length,
                   separatorBuilder: (_, _) =>
                       const SizedBox(width: AppSpacing.md),
-                  itemBuilder: (_, i) =>
-                      _ProviderCard(provider: _providers[i], onProfile: _soon),
+                  itemBuilder: (_, i) => _ProviderCard(
+                    provider: _providers[i],
+                    onProfile: () => _openProviderProfile(_providers[i]),
+                  ),
                 ),
               ),
 
@@ -404,18 +421,19 @@ class _ProviderCard extends StatelessWidget {
                       )
                     : null,
               ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+              if (provider.isVerified)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.verified,
+                    size: 18,
+                    color: Color(0xFF2D9CDB),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.verified,
-                  size: 18,
-                  color: Color(0xFF2D9CDB),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

@@ -15,6 +15,7 @@ class CategoryProvider {
     this.avgRating,
     this.totalJobs,
     this.bio,
+    this.verificationStatus,
   });
 
   final String id;
@@ -25,9 +26,49 @@ class CategoryProvider {
   final num? avgRating;
   final int? totalJobs;
   final String? bio;
+  final String? verificationStatus;
 
   String get fullName =>
       [firstName, lastName ?? ''].where((s) => s.trim().isNotEmpty).join(' ');
+
+  bool get isVerified => verificationStatus == 'verified';
+
+  Map<String, dynamic> toPublicProfileData({
+    String? serviceName,
+    String? serviceEmoji,
+    String? serviceDescription,
+  }) {
+    final services = serviceName == null || serviceName.trim().isEmpty
+        ? null
+        : [
+            {
+              'name': serviceName,
+              'emoji': serviceEmoji,
+              'description': serviceDescription,
+            },
+          ];
+    return {
+      'id': id,
+      'technician_id': id,
+      'first_name': firstName,
+      'last_name': lastName,
+      'avatar_url': avatarUrl,
+      'district_name': districtName,
+      'viewer_context': 'client',
+      if (verificationStatus != null) 'verification_status': verificationStatus,
+      if (services != null) 'services': services,
+      'technician': {
+        'id': id,
+        'bio': bio,
+        'district_name': districtName,
+        'avg_rating': avgRating,
+        'total_jobs_completed': totalJobs,
+        if (verificationStatus != null)
+          'verification_status': verificationStatus,
+        if (services != null) 'services': services,
+      },
+    };
+  }
 
   factory CategoryProvider.fromJson(Map<String, dynamic> j) => CategoryProvider(
     id: j['id'] as String,
@@ -38,7 +79,20 @@ class CategoryProvider {
     avgRating: j['avg_rating'] as num?,
     totalJobs: (j['total_jobs_completed'] as num?)?.toInt(),
     bio: j['bio'] as String?,
+    // Estos RPCs públicos solo devuelven técnicos verificados; si el backend
+    // empieza a enviar el estado explícito, ese valor tiene prioridad.
+    verificationStatus: _readVerificationStatus(j) ?? 'verified',
   );
+}
+
+String? _readVerificationStatus(Map<String, dynamic> j) {
+  final status = (j['verification_status'] ?? j['verificationStatus'])
+      ?.toString()
+      .trim();
+  if (status != null && status.isNotEmpty && status != 'null') return status;
+  final isVerified = j['is_verified'] ?? j['isVerified'];
+  if (isVerified == true) return 'verified';
+  return null;
 }
 
 /// Un pedido reciente de cliente en una categoría (prueba social).

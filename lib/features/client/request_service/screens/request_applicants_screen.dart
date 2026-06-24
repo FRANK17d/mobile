@@ -77,7 +77,7 @@ class _RequestApplicantsScreenState extends State<RequestApplicantsScreen> {
     if (ok) {
       showAppToast(
         context,
-        message: 'Elegiste a ${a.firstName}. ¡Coordina el trabajo!',
+        message: 'Elegiste a ${a.firstName}. Coordina por chat y pago directo.',
         type: ToastType.success,
       );
       Navigator.of(context).pop(true);
@@ -117,17 +117,20 @@ class _RequestApplicantsScreenState extends State<RequestApplicantsScreen> {
                 onRefresh: _load,
                 child: ListView.separated(
                   padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
-                  itemCount: _applicants.length,
+                  itemCount: _applicants.length + 1,
                   separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (_, i) => _ApplicantCard(
-                    applicant: _applicants[i],
-                    accepting: _accepting == _applicants[i].applicationId,
-                    // Si ya hay uno aceptado, deshabilitar el resto.
-                    disabled:
-                        anyAccepted && _applicants[i].status != 'accepted',
-                    onAccept: () => _accept(_applicants[i]),
-                  ),
+                  itemBuilder: (_, i) {
+                    if (i == 0) return const _DirectPaymentNotice();
+                    final applicant = _applicants[i - 1];
+                    return _ApplicantCard(
+                      applicant: applicant,
+                      accepting: _accepting == applicant.applicationId,
+                      // Si ya hay uno aceptado, deshabilitar el resto.
+                      disabled: anyAccepted && applicant.status != 'accepted',
+                      onAccept: () => _accept(applicant),
+                    );
+                  },
                 ),
               ),
       ),
@@ -160,6 +163,39 @@ class _RequestApplicantsScreenState extends State<RequestApplicantsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DirectPaymentNotice extends StatelessWidget {
+  const _DirectPaymentNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E8),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: const Color(0xFFFFD99A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFB7791F)),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Al elegir un técnico, coordina el trabajo por chat. El pago se acuerda y realiza directamente con él; TOKE+ no retiene ese dinero.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: const Color(0xFF744210),
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
