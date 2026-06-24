@@ -81,6 +81,59 @@ class ApplyResult {
   final String? error;
 }
 
+/// Un pedido del historial del técnico (fue asignado o postuló).
+class TechnicianOrder {
+  const TechnicianOrder({
+    required this.id,
+    this.orderNumber,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.categoryName,
+    required this.categoryEmoji,
+    required this.districtName,
+    this.clientFirstName,
+    this.clientLastName,
+    this.createdAt,
+  });
+
+  final String id;
+  final int? orderNumber;
+  final String title;
+  final String description;
+  final String status;
+  final String categoryName;
+  final String categoryEmoji;
+  final String districtName;
+  final String? clientFirstName;
+  final String? clientLastName;
+  final DateTime? createdAt;
+
+  String get clientShortName {
+    final first = clientFirstName ?? '';
+    final last = clientLastName ?? '';
+    if (first.isEmpty) return 'Cliente';
+    final initial = last.isNotEmpty ? '${last[0]}.' : '';
+    return '$first $initial'.trim();
+  }
+
+  factory TechnicianOrder.fromJson(Map<String, dynamic> j) => TechnicianOrder(
+    id: j['id'] as String,
+    orderNumber: (j['order_number'] as num?)?.toInt(),
+    title: j['title'] as String? ?? '',
+    description: j['description'] as String? ?? '',
+    status: j['status'] as String? ?? '',
+    categoryName: j['category_name'] as String? ?? '',
+    categoryEmoji: j['category_emoji'] as String? ?? '',
+    districtName: j['district_name'] as String? ?? '',
+    clientFirstName: j['client_first_name'] as String?,
+    clientLastName: j['client_last_name'] as String?,
+    createdAt: j['created_at'] != null
+        ? DateTime.tryParse(j['created_at'] as String)
+        : null,
+  );
+}
+
 /// Feed del técnico: pedidos disponibles + postular (débito atómico).
 class TechnicianFeedService {
   final InsForgeClient _client = InsForgeClient();
@@ -108,6 +161,27 @@ class TechnicianFeedService {
       return const [];
     } catch (e) {
       debugPrint('Exception getAvailableRequests: $e');
+      return const [];
+    }
+  }
+
+  /// Historial de pedidos del técnico (asignados y postulados).
+  Future<List<TechnicianOrder>> getMyOrders() async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/get_my_technician_orders',
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body) as List<dynamic>;
+        return data
+            .map((e) => TechnicianOrder.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      debugPrint('getMyOrders error: ${response.statusCode}');
+      return const [];
+    } catch (e) {
+      debugPrint('Exception getMyOrders: $e');
       return const [];
     }
   }

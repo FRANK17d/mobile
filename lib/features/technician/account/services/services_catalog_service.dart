@@ -93,4 +93,27 @@ class ServicesCatalogService {
       return (success: false, message: 'Error de conexión.');
     }
   }
+
+  /// Actualiza las categorías del técnico (sin límite post-registro).
+  Future<({bool success, String? message})> setCategories(
+    List<int> categoryIds,
+  ) async {
+    try {
+      final res = await _client.post(
+        '/api/database/rpc/set_technician_categories',
+        body: {'p_category_ids': categoryIds},
+        requireAuth: true,
+      );
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final r = jsonDecode(res.body) as Map<String, dynamic>;
+        return (
+          success: r['success'] == true,
+          message: r['message'] as String?,
+        );
+      }
+      return (success: false, message: 'No se pudo guardar.');
+    } catch (_) {
+      return (success: false, message: 'Error de conexión.');
+    }
+  }
 }

@@ -1137,15 +1137,19 @@ class _ServicesScreenState extends State<ServicesScreen> {
     _load();
   }
 
+  /// Categorías activas del técnico (para guardarlas junto con los servicios).
+  final Set<int> _activeCategories = {};
+
   Future<void> _load() async {
     final cats = await _catalogService.getCatalog();
     final allowed = _allowedCategoryIds();
-    final filtered = allowed.isEmpty
-        ? <ServiceCatalogCategory>[]
-        : cats.where((c) => allowed.contains(c.id)).toList();
     if (!mounted) return;
     setState(() {
-      _catalog = filtered;
+      // Mostramos TODAS las categorías; las del técnico vienen pre-expandidas.
+      _catalog = cats;
+      _activeCategories
+        ..clear()
+        ..addAll(allowed);
       _selected
         ..clear()
         ..addAll(
@@ -1175,6 +1179,23 @@ class _ServicesScreenState extends State<ServicesScreen> {
         .toSet();
   }
 
+  void _toggleCategory(int categoryId, bool value) {
+    setState(() {
+      if (value) {
+        _activeCategories.add(categoryId);
+      } else {
+        _activeCategories.remove(categoryId);
+        // Deseleccionar servicios de esa categoría
+        final cat = _catalog.where((c) => c.id == categoryId).firstOrNull;
+        if (cat != null) {
+          for (final s in cat.services) {
+            _selected.remove(s.id);
+          }
+        }
+      }
+    });
+  }
+
   void _toggle(int id, bool value) {
     setState(() {
       if (value) {
@@ -1188,6 +1209,22 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
+
+    // Guardar categorías primero, luego servicios
+    final catRes = await _catalogService.setCategories(
+      _activeCategories.toList(),
+    );
+    if (!catRes.success) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      showAppToast(
+        context,
+        message: catRes.message ?? 'No se pudieron guardar las categorías.',
+        type: ToastType.error,
+      );
+      return;
+    }
+
     final res = await _catalogService.setServices(_selected.toList());
     if (!mounted) return;
     setState(() => _saving = false);
@@ -1228,7 +1265,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       ),
                       children: [
                         Text(
-                          'Marcá los servicios que ofrecés en cada categoría. Los clientes te encontrarán por ellos.',
+                          'Seleccioná las categorías que ofrecés y marcá los servicios dentro de cada una.',
                           style: GoogleFonts.nunito(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -1245,6 +1282,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                 _selectedCountIn(c) > 0,
                             isSelected: _selected.contains,
                             onToggle: _toggle,
+                            isCategoryActive: _activeCategories.contains(c.id),
+                            onCategoryToggle: (val) =>
+                                _toggleCategory(c.id, val),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.xxl),
@@ -1315,6 +1355,8 @@ class _CategoryServicesTile extends StatelessWidget {
   final bool initiallyExpanded;
   final bool Function(int id) isSelected;
   final void Function(int id, bool value) onToggle;
+  final bool isCategoryActive;
+  final void Function(bool value) onCategoryToggle;
 
   const _CategoryServicesTile({
     required this.category,
@@ -1322,72 +1364,96 @@ class _CategoryServicesTile extends StatelessWidget {
     required this.initiallyExpanded,
     required this.isSelected,
     required this.onToggle,
+    required this.isCategoryActive,
+    required this.onCategoryToggle,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded,
-          shape: const Border(),
-          collapsedShape: const Border(),
-          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          leading: Text(category.emoji, style: const TextStyle(fontSize: 26)),
-          title: Text(
-            category.name,
-            style: GoogleFonts.nunito(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.secondaryDark,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: isCategoryActive ? 1.0 : 0.6,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: isCategoryActive
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-          ),
-          subtitle: Text(
-            selectedCount == 0
-                ? '${category.services.length} servicios'
-                : '$selectedCount seleccionado${selectedCount == 1 ? "" : "s"}',
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: selectedCount > 0
-                  ? AppColors.primaryDark
-                  : AppColors.textSecondary,
-            ),
-          ),
-          children: category.services.map((s) {
-            return CheckboxListTile(
-              value: isSelected(s.id),
-              onChanged: (v) => onToggle(s.id, v ?? false),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: AppColors.primary,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-              ),
-              title: Text(
-                s.name,
-                style: GoogleFonts.nunito(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.secondaryDark,
+          ],
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            initiallyExpanded: initiallyExpanded && isCategoryActive,
+            shape: const Border(),
+            collapsedShape: const Border(),
+            tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            leading: Text(category.emoji, style: const TextStyle(fontSize: 26)),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    category.name,
+                    style: GoogleFonts.nunito(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.secondaryDark,
+                    ),
+                  ),
                 ),
+                Switch.adaptive(
+                  value: isCategoryActive,
+                  onChanged: onCategoryToggle,
+                  activeColor: AppColors.primary,
+                ),
+              ],
+            ),
+            subtitle: Text(
+              !isCategoryActive
+                  ? '${category.services.length} servicios disponibles'
+                  : selectedCount == 0
+                  ? '${category.services.length} servicios para marcar'
+                  : '$selectedCount seleccionado${selectedCount == 1 ? "" : "s"}',
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selectedCount > 0 && isCategoryActive
+                    ? AppColors.primaryDark
+                    : AppColors.textSecondary,
               ),
-            );
-          }).toList(),
+            ),
+            children: isCategoryActive
+                ? category.services.map((s) {
+                    return CheckboxListTile(
+                      value: isSelected(s.id),
+                      onChanged: (v) => onToggle(s.id, v ?? false),
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: AppColors.primary,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      title: Text(
+                        s.name,
+                        style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.secondaryDark,
+                        ),
+                      ),
+                    );
+                  }).toList()
+                : const [],
+          ),
         ),
       ),
     );
