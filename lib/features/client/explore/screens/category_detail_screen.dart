@@ -68,8 +68,9 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     }
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            RequestServiceWizardScreen(initialCategoryName: widget.category.name),
+        builder: (_) => RequestServiceWizardScreen(
+          initialCategoryName: widget.category.name,
+        ),
       ),
     );
   }
@@ -120,8 +121,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.info_outline_rounded,
-                  color: AppColors.neutral500),
+              icon: const Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.neutral500,
+              ),
               onPressed: _soon,
             ),
           ],
@@ -139,7 +142,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             const SizedBox(height: AppSpacing.xl),
 
             // ── Prestadores ──
-            _SectionHeader(emoji: '🧰', title: 'Algunos que brindan este servicio'),
+            _SectionHeader(
+              emoji: '🧰',
+              title: 'Algunos que brindan este servicio',
+            ),
             const SizedBox(height: AppSpacing.md),
             if (_loading)
               const _SectionLoader()
@@ -171,9 +177,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             if (_loading)
               const _SectionLoader()
             else if (_requests.isEmpty)
-              const _EmptyHint(
-                text: 'Aún no hay pedidos en esta categoría.',
-              )
+              const _EmptyHint(text: 'Aún no hay pedidos en esta categoría.')
             else
               SizedBox(
                 height: 168,
@@ -339,7 +343,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPaddingH),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenPaddingH,
+      ),
       child: Row(
         children: [
           Text(emoji, style: const TextStyle(fontSize: 20)),
@@ -391,8 +397,11 @@ class _ProviderCard extends StatelessWidget {
                     ? CachedNetworkImageProvider(provider.avatarUrl!)
                     : null,
                 child: provider.avatarUrl == null
-                    ? const Icon(Icons.person, size: 34,
-                        color: AppColors.neutral500)
+                    ? const Icon(
+                        Icons.person,
+                        size: 34,
+                        color: AppColors.neutral500,
+                      )
                     : null,
               ),
               Container(
@@ -401,8 +410,11 @@ class _ProviderCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
-                child: const Icon(Icons.verified, size: 18,
-                    color: Color(0xFF2D9CDB)),
+                child: const Icon(
+                  Icons.verified,
+                  size: 18,
+                  color: Color(0xFF2D9CDB),
+                ),
               ),
             ],
           ),
@@ -433,7 +445,11 @@ class _ProviderCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFC107)),
+              const Icon(
+                Icons.star_rounded,
+                size: 16,
+                color: Color(0xFFFFC107),
+              ),
               const SizedBox(width: 2),
               Text(
                 (provider.avgRating ?? 0).toStringAsFixed(1),
@@ -520,12 +536,14 @@ class _RequestCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          if (request.districtName != null &&
-              request.districtName!.isNotEmpty)
+          if (request.districtName != null && request.districtName!.isNotEmpty)
             Row(
               children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 15, color: AppColors.neutral500),
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 15,
+                  color: AppColors.neutral500,
+                ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -544,8 +562,11 @@ class _RequestCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
-              const Icon(Icons.person_outline, size: 16,
-                  color: AppColors.neutral500),
+              const Icon(
+                Icons.person_outline,
+                size: 16,
+                color: AppColors.neutral500,
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -558,8 +579,10 @@ class _RequestCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: badge.bg,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
@@ -607,7 +630,11 @@ class _RequestCard extends StatelessWidget {
         bg: AppColors.neutral200,
       );
     default:
-      return (label: status, color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: status,
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
   }
 }
 
@@ -678,12 +705,12 @@ class _EmptyHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPaddingH),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenPaddingH,
+      ),
       child: Text(
         text,
-        style: AppTypography.bodyMedium.copyWith(
-          color: AppColors.textTertiary,
-        ),
+        style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
       ),
     );
   }

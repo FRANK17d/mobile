@@ -114,7 +114,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       // ── Confirmación explícita ──
                       InkWell(
                         onTap: () => setState(() => _confirmed = !_confirmed),
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Row(
@@ -192,7 +194,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     ),
                     const SizedBox(height: 10),
                     TextButton(
-                      onPressed: _busy ? null : () => Navigator.of(context).pop(),
+                      onPressed: _busy
+                          ? null
+                          : () => Navigator.of(context).pop(),
                       child: Text(
                         'Mejor no, volver',
                         style: AppTypography.bodyLarge.copyWith(

@@ -70,11 +70,7 @@ class AiService {
     try {
       final response = await _client.post(
         _endpoint,
-        body: {
-          'action': 'support',
-          'message': message,
-          'history': history,
-        },
+        body: {'action': 'support', 'message': message, 'history': history},
         requireAuth: true,
       );
       if (response.statusCode == 200) {

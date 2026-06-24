@@ -35,7 +35,7 @@ class TechnicianPublicPreviewScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 80),
                 color: AppColors.secondaryDark,
                 child: Text(
-                  'Se unió a Toke+ hace un momento.',
+                  data.joinedLabel,
                   textAlign: TextAlign.center,
                   style: AppTypography.bodyLarge.copyWith(
                     color: Colors.white.withValues(alpha: 0.72),
@@ -201,6 +201,7 @@ class _PublicProfileHero extends StatelessWidget {
                   avatarUrl: data.avatarUrl,
                   size: 110,
                   borderRadius: 24,
+                  isVerified: data.isVerified,
                 ),
               ],
             ),
@@ -253,23 +254,6 @@ class _PublicProfileDetails extends StatelessWidget {
               height: 1.42,
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Container(
-            width: double.infinity,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF1FA),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Más sobre ${data.firstName}',
-              style: AppTypography.titleMedium.copyWith(
-                color: AppColors.secondaryDark,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
           const SizedBox(height: AppSpacing.xxl),
           _SectionTitle('Servicios que brinda'),
           const SizedBox(height: AppSpacing.lg),
@@ -298,23 +282,6 @@ class _PublicProfileDetails extends StatelessWidget {
             style: AppTypography.bodyLarge.copyWith(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Container(
-            width: double.infinity,
-            height: 46,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF1FA),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Ver zonas de cobertura',
-              style: AppTypography.titleMedium.copyWith(
-                color: AppColors.secondaryDark,
-                fontWeight: FontWeight.w900,
-              ),
             ),
           ),
         ],
@@ -768,16 +735,18 @@ class _ProfilePhoto extends StatelessWidget {
     required this.avatarUrl,
     required this.size,
     required this.borderRadius,
+    this.isVerified = false,
   });
 
   final String? avatarUrl;
   final double size;
   final double borderRadius;
+  final bool isVerified;
 
   @override
   Widget build(BuildContext context) {
     final imageUrl = avatarUrl;
-    return Container(
+    final photo = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -805,6 +774,30 @@ class _ProfilePhoto extends StatelessWidget {
               ),
             )
           : _ProfilePhotoFallback(size: size),
+    );
+
+    if (!isVerified) return photo;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        photo,
+        Positioned(
+          right: -4,
+          bottom: -4,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.verified_rounded,
+              color: Color(0xFF2563EB),
+              size: 26,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -995,6 +988,8 @@ class _TechnicianProfileViewData {
     required this.phoneLabel,
     required this.avatarUrl,
     required this.services,
+    required this.joinedLabel,
+    required this.isVerified,
   });
 
   final Map<String, dynamic>? rawProfileData;
@@ -1005,6 +1000,27 @@ class _TechnicianProfileViewData {
   final String phoneLabel;
   final String? avatarUrl;
   final List<_ServiceViewData> services;
+  final String joinedLabel;
+  final bool isVerified;
+
+  static String _joinedLabel(DateTime? d) {
+    if (d == null) return 'Miembro de Toke+';
+    const months = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return 'Se unió a Toke+ en ${months[d.month - 1]} de ${d.year}';
+  }
 
   static _TechnicianProfileViewData from(Map<String, dynamic>? profileData) {
     final technician = _asMap(profileData?['technician']);
@@ -1018,8 +1034,22 @@ class _TechnicianProfileViewData {
     );
     final fullName = '$firstName $lastName'.trim();
 
+    final createdAtRaw = _firstValue(
+      [profileData, technician],
+      ['created_at', 'createdAt'],
+    );
+    final joinedAt = createdAtRaw is String
+        ? DateTime.tryParse(createdAtRaw)
+        : null;
+    final status = _firstString(
+      [technician, profileData],
+      ['verification_status'],
+    );
+
     return _TechnicianProfileViewData(
       rawProfileData: profileData,
+      joinedLabel: _joinedLabel(joinedAt),
+      isVerified: status == 'verified',
       firstName: firstName.isEmpty ? 'Técnico' : firstName,
       fullName: fullName.isEmpty ? 'Técnico Toke+' : fullName,
       bio: _firstString(

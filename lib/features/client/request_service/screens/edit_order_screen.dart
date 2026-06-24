@@ -120,7 +120,8 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final d = widget.detail;
-    final descError = _descriptionController.text.isNotEmpty &&
+    final descError =
+        _descriptionController.text.isNotEmpty &&
         _descriptionController.text.trim().length < 10;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -444,8 +445,18 @@ class _DayStripState extends State<_DayStrip> {
 
   static const _weekdays = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   static const _months = [
-    'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-    'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+    'ENE',
+    'FEB',
+    'MAR',
+    'ABR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AGO',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DIC',
   ];
 
   @override

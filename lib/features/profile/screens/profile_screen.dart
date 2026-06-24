@@ -35,10 +35,10 @@ class ProfileScreen extends StatelessWidget {
         final lastName = profile?['last_name'] as String? ?? '';
         final email = profile?['email'] as String? ?? '';
         final avatarUrl = profile?['avatar_url'] as String?;
-        final fullName = [firstName, lastName]
-            .where((s) => s.trim().isNotEmpty)
-            .join(' ')
-            .trim();
+        final fullName = [
+          firstName,
+          lastName,
+        ].where((s) => s.trim().isNotEmpty).join(' ').trim();
         final displayName = fullName.isNotEmpty
             ? fullName
             : (email.isNotEmpty ? email.split('@').first : 'Mi cuenta');
@@ -141,10 +141,8 @@ class ProfileScreen extends StatelessWidget {
                             icon: Icons.format_list_bulleted_rounded,
                             label: 'Mis pedidos',
                             showChevron: false,
-                            onTap: () => _push(
-                              context,
-                              const MyRequestsScreen(),
-                            ),
+                            onTap: () =>
+                                _push(context, const MyRequestsScreen()),
                           ),
                           _LinkItem(
                             icon: Icons.info_outline_rounded,
@@ -199,14 +197,17 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _push(BuildContext context, Widget screen) {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   void _openNotifications(BuildContext context) {
     Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => const ClientNotificationsScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => const ClientNotificationsScreen(),
+      ),
     );
   }
 
@@ -346,8 +347,11 @@ class _RolePill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.person_outline_rounded,
-              size: 16, color: Color(0xFF2563EB)),
+          const Icon(
+            Icons.person_outline_rounded,
+            size: 16,
+            color: Color(0xFF2563EB),
+          ),
           const SizedBox(width: 6),
           Text(
             'Cliente',
@@ -472,10 +476,7 @@ class _TrustPromoCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 GradientPillButton(label: 'Pedir servicio', onTap: onPedir),
                 const SizedBox(height: AppSpacing.sm),
-                _OutlinePill(
-                  label: '¿Cómo funciona?',
-                  onTap: onComoFunciona,
-                ),
+                _OutlinePill(label: '¿Cómo funciona?', onTap: onComoFunciona),
               ],
             ),
           ),

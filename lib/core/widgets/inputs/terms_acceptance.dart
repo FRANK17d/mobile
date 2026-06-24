@@ -33,15 +33,11 @@ class _TermsAcceptanceCheckboxState extends State<TermsAcceptanceCheckbox> {
   void initState() {
     super.initState();
     _termsTap = TapGestureRecognizer()
-      ..onTap = () => _openWeb(
-        'https://tokeplus.app/terminos',
-        'Términos y condiciones',
-      );
+      ..onTap = () =>
+          _openWeb('https://tokeplus.app/terminos', 'Términos y condiciones');
     _privacyTap = TapGestureRecognizer()
-      ..onTap = () => _openWeb(
-        'https://tokeplus.app/privacidad',
-        'Política de privacidad',
-      );
+      ..onTap = () =>
+          _openWeb('https://tokeplus.app/privacidad', 'Política de privacidad');
   }
 
   @override

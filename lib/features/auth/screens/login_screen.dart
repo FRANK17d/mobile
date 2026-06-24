@@ -352,9 +352,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final wants = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         icon: const Icon(
           Icons.fingerprint_rounded,
           color: AppColors.primary,
@@ -390,9 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Activar'),
           ),
         ],

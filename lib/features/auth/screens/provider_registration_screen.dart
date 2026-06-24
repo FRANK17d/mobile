@@ -1582,10 +1582,7 @@ class _Step5Terms extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxxl),
 
           // ── Terminos y condiciones (enlaces abren WebView) ──
-          TermsAcceptanceCheckbox(
-            value: acceptTerms,
-            onChanged: onToggleTerms,
-          ),
+          TermsAcceptanceCheckbox(value: acceptTerms, onChanged: onToggleTerms),
         ],
       ),
     );

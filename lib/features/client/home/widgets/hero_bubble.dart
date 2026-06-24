@@ -255,21 +255,53 @@ class _OrdersStripState extends State<_OrdersStrip> {
 ({String label, Color color, Color bg}) _homeStatusBadge(String status) {
   switch (status) {
     case 'pending_review':
-      return (label: 'En revisión', color: AppColors.primary, bg: const Color(0xFFFFF0ED));
+      return (
+        label: 'En revisión',
+        color: AppColors.primary,
+        bg: const Color(0xFFFFF0ED),
+      );
     case 'open':
-      return (label: 'Publicado', color: const Color(0xFF2563EB), bg: const Color(0xFFE7EEFD));
+      return (
+        label: 'Publicado',
+        color: const Color(0xFF2563EB),
+        bg: const Color(0xFFE7EEFD),
+      );
     case 'assigned':
-      return (label: 'Asignado', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'Asignado',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'in_progress':
-      return (label: 'En curso', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'En curso',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'completed':
-      return (label: 'Completado', color: const Color(0xFF2ECC71), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'Completado',
+        color: const Color(0xFF2ECC71),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'cancelled':
-      return (label: 'Cancelado', color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: 'Cancelado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
     case 'rejected':
-      return (label: 'No aprobado', color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: 'No aprobado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
     default:
-      return (label: status, color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: status,
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
   }
 }
 
@@ -309,7 +341,10 @@ class _HomeOrderCard extends StatelessWidget {
                 ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badge.bg,
                   borderRadius: BorderRadius.circular(20),

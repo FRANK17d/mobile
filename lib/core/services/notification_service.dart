@@ -171,5 +171,10 @@ class NotificationService {
       RealtimeService.instance.unsubscribe(_channel!);
     }
     _channel = null;
+    // Limpia la sesión en memoria: al cerrar sesión, el badge/lista no deben
+    // quedar con datos del usuario anterior si entra otra cuenta en el mismo
+    // dispositivo (igual el historial siempre se reconsulta por auth.uid()).
+    notifications.value = const [];
+    unreadCount.value = 0;
   }
 }

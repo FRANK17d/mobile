@@ -39,7 +39,11 @@ class ClientNotificationsScreen extends StatelessWidget {
         ),
         body: Column(
           children: [
-            const Divider(height: 1, thickness: 1, color: AppColors.borderLight),
+            const Divider(
+              height: 1,
+              thickness: 1,
+              color: AppColors.borderLight,
+            ),
             Expanded(
               child: ValueListenableBuilder<List<AppNotification>>(
                 valueListenable: NotificationService.instance.notifications,
@@ -48,8 +52,7 @@ class ClientNotificationsScreen extends StatelessWidget {
                     return const _EmptyNotifications();
                   }
                   return RefreshIndicator(
-                    onRefresh: () =>
-                        NotificationService.instance.loadHistory(),
+                    onRefresh: () => NotificationService.instance.loadHistory(),
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -63,10 +66,11 @@ class ClientNotificationsScreen extends StatelessWidget {
                           key: ValueKey(n.id),
                           direction: DismissDirection.horizontal,
                           background: const _DismissBackground(toLeft: false),
-                          secondaryBackground:
-                              const _DismissBackground(toLeft: true),
-                          onDismissed: (_) =>
-                              NotificationService.instance.deleteNotification(n.id),
+                          secondaryBackground: const _DismissBackground(
+                            toLeft: true,
+                          ),
+                          onDismissed: (_) => NotificationService.instance
+                              .deleteNotification(n.id),
                           child: _NotificationCard(
                             notification: n,
                             onTap: () {
@@ -103,7 +107,9 @@ class _NotificationCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? Colors.white : AppColors.primary.withValues(alpha: 0.04),
+          color: isRead
+              ? Colors.white
+              : AppColors.primary.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isRead
@@ -179,7 +185,11 @@ class _DismissBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const icon = Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22);
+    const icon = Icon(
+      Icons.delete_outline_rounded,
+      color: Colors.white,
+      size: 22,
+    );
     const label = Text(
       'Eliminar',
       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),

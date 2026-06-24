@@ -27,7 +27,12 @@ class UnauthHeader extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(top: topPadding + 16, left: 20, right: 20, bottom: 28),
+      padding: EdgeInsets.only(
+        top: topPadding + 16,
+        left: 20,
+        right: 20,
+        bottom: 28,
+      ),
       decoration: const BoxDecoration(color: Color(0xFF1D2939)),
       child: Column(
         children: [
@@ -58,7 +63,9 @@ class UnauthHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF2D3B4F),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Row(
                   children: [

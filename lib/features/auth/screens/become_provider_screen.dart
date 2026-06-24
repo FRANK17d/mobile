@@ -305,7 +305,11 @@ class _Hint extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8, left: 4),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.error),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 14,
+            color: AppColors.error,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(

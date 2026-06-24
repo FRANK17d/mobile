@@ -677,10 +677,52 @@ class AuthService {
           message: r['message'] as String?,
         );
       }
-      debugPrint('updateProfile error: ${response.statusCode} ${response.body}');
+      debugPrint(
+        'updateProfile error: ${response.statusCode} ${response.body}',
+      );
       return (success: false, message: 'No se pudo actualizar el perfil.');
     } catch (e) {
       debugPrint('Exception updateProfile: $e');
+      return (success: false, message: 'Error de conexión.');
+    }
+  }
+
+  /// Edita el perfil del técnico (nombre, bio, distrito de cobertura, Q&A).
+  /// Cada campo es opcional: null = no cambiar. Vía RPC update_technician_profile.
+  Future<({bool success, String? message})> updateTechnicianProfile({
+    String? firstName,
+    String? lastName,
+    String? bio,
+    int? districtId,
+    Map<String, dynamic>? qa,
+    bool? hasInvoice,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/api/database/rpc/update_technician_profile',
+        body: {
+          'p_first_name': firstName,
+          'p_last_name': lastName,
+          'p_bio': bio,
+          'p_district_id': districtId,
+          'p_qa': qa,
+          'p_has_invoice': hasInvoice,
+        },
+        requireAuth: true,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final r = jsonDecode(response.body) as Map<String, dynamic>;
+        return (
+          success: r['success'] == true,
+          message: r['message'] as String?,
+        );
+      }
+      debugPrint(
+        'updateTechnicianProfile error: ${response.statusCode} ${response.body}',
+      );
+      return (success: false, message: 'No se pudo actualizar el perfil.');
+    } catch (e) {
+      debugPrint('Exception updateTechnicianProfile: $e');
       return (success: false, message: 'Error de conexión.');
     }
   }
@@ -718,7 +760,10 @@ class AuthService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final r = jsonDecode(response.body);
         if (r is Map) {
-          return (success: r['success'] == true, message: r['message'] as String?);
+          return (
+            success: r['success'] == true,
+            message: r['message'] as String?,
+          );
         }
         return (success: false, message: 'Respuesta inesperada del servidor.');
       }

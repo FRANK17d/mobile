@@ -45,7 +45,11 @@ class OrdersListScreen extends StatelessWidget {
 // Header oscuro reutilizable (con y sin sesión)
 // ─────────────────────────────────────────────────────────
 class _OrdersHeader extends StatelessWidget {
-  const _OrdersHeader({required this.title, required this.actions, required this.onSearch});
+  const _OrdersHeader({
+    required this.title,
+    required this.actions,
+    required this.onSearch,
+  });
 
   final String title;
   final List<Widget> actions;
@@ -56,7 +60,12 @@ class _OrdersHeader extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(top: topPadding + 14, left: 20, right: 20, bottom: 26),
+      padding: EdgeInsets.only(
+        top: topPadding + 14,
+        left: 20,
+        right: 20,
+        bottom: 26,
+      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -111,7 +120,11 @@ class _SearchPill extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.5), size: 22),
+            Icon(
+              Icons.search_rounded,
+              color: Colors.white.withValues(alpha: 0.5),
+              size: 22,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -189,7 +202,9 @@ class _UnauthenticatedOrdersView extends StatelessWidget {
               child: Center(
                 child: _NoOrdersContent(
                   onComoFunciona: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HowItWorksScreen(),
+                    ),
                   ),
                 ),
               ),
@@ -363,14 +378,16 @@ class _AuthenticatedOrdersViewState extends State<_AuthenticatedOrdersView> {
   }
 
   void _openHowItWorks() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()));
   }
 
   void _openNotifications() {
     Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => const ClientNotificationsScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => const ClientNotificationsScreen(),
+      ),
     );
   }
 
@@ -455,17 +472,28 @@ class _AuthenticatedOrdersViewState extends State<_AuthenticatedOrdersView> {
                             child: filtered.isEmpty
                                 ? _EmptyForFilter(filter: _filter)
                                 : ListView.builder(
-                                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      12,
+                                      20,
+                                      120,
+                                    ),
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
                                     itemCount: filtered.length,
                                     itemBuilder: (_, i) {
                                       final r = filtered[i];
                                       return Padding(
-                                        padding: const EdgeInsets.only(bottom: 14),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 14,
+                                        ),
                                         child: _FadeSlideIn(
                                           key: ValueKey('order-${r.id}'),
                                           delay: Duration(
-                                            milliseconds: (i * 55).clamp(0, 330),
+                                            milliseconds: (i * 55).clamp(
+                                              0,
+                                              330,
+                                            ),
                                           ),
                                           child: _HistoryCard(
                                             request: r,
@@ -619,7 +647,9 @@ class _EmptyForFilter extends StatelessWidget {
         Text(
           text,
           textAlign: TextAlign.center,
-          style: AppTypography.bodyLarge.copyWith(color: AppColors.textTertiary),
+          style: AppTypography.bodyLarge.copyWith(
+            color: AppColors.textTertiary,
+          ),
         ),
       ],
     );
@@ -630,21 +660,53 @@ class _EmptyForFilter extends StatelessWidget {
 ({String label, Color color, Color bg}) _statusBadge(String status) {
   switch (status) {
     case 'pending_review':
-      return (label: 'En revisión', color: AppColors.primary, bg: const Color(0xFFFFF0ED));
+      return (
+        label: 'En revisión',
+        color: AppColors.primary,
+        bg: const Color(0xFFFFF0ED),
+      );
     case 'open':
-      return (label: 'Publicado', color: const Color(0xFF2563EB), bg: const Color(0xFFE7EEFD));
+      return (
+        label: 'Publicado',
+        color: const Color(0xFF2563EB),
+        bg: const Color(0xFFE7EEFD),
+      );
     case 'assigned':
-      return (label: 'Asignado', color: const Color(0xFF1FA855), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'Asignado',
+        color: const Color(0xFF1FA855),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'in_progress':
-      return (label: 'En curso', color: const Color(0xFF1FA855), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'En curso',
+        color: const Color(0xFF1FA855),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'completed':
-      return (label: 'Completado', color: const Color(0xFF1FA855), bg: const Color(0xFFE8F8EF));
+      return (
+        label: 'Completado',
+        color: const Color(0xFF1FA855),
+        bg: const Color(0xFFE8F8EF),
+      );
     case 'cancelled':
-      return (label: 'Cancelado', color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: 'Cancelado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
     case 'rejected':
-      return (label: 'Rechazado', color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: 'Rechazado',
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
     default:
-      return (label: status, color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: status,
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
   }
 }
 
@@ -743,7 +805,8 @@ class _HistoryCard extends StatelessWidget {
     final badge = _statusBadge(request.status);
     final title = request.title.isEmpty ? request.categoryName : request.title;
     final thumb = request.thumbnailUrl;
-    final showApplicants = request.applicationsCount > 0 &&
+    final showApplicants =
+        request.applicationsCount > 0 &&
         (request.status == 'open' ||
             request.status == 'assigned' ||
             request.status == 'in_progress');
@@ -844,7 +907,10 @@ class _HistoryCard extends StatelessWidget {
                     _ApplicantsChip(count: request.applicationsCount),
                   ],
                   const Spacer(),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.neutral400),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.neutral400,
+                  ),
                 ],
               ),
             ],
@@ -876,7 +942,11 @@ class _Leading extends StatelessWidget {
             fit: BoxFit.cover,
             errorWidget: (_, _, _) => const ColoredBox(
               color: AppColors.neutral200,
-              child: Icon(Icons.image_outlined, color: AppColors.neutral400, size: 20),
+              child: Icon(
+                Icons.image_outlined,
+                color: AppColors.neutral400,
+                size: 20,
+              ),
             ),
           ),
         ),
@@ -917,7 +987,10 @@ class _StatusBadgeView extends StatelessWidget {
           Container(
             width: 7,
             height: 7,
-            decoration: BoxDecoration(color: badge.color, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: badge.color,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 6),
           Text(
@@ -949,7 +1022,11 @@ class _ApplicantsChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.group_outlined, size: 14, color: AppColors.textSecondary),
+          const Icon(
+            Icons.group_outlined,
+            size: 14,
+            color: AppColors.textSecondary,
+          ),
           const SizedBox(width: 5),
           Text(
             '$count',
@@ -993,7 +1070,11 @@ String _relativeTime(DateTime date) {
 /// Entrada animada (fade + leve slide) con retardo escalonado por índice.
 /// Anima una sola vez gracias a la key estable de cada tarjeta.
 class _FadeSlideIn extends StatefulWidget {
-  const _FadeSlideIn({super.key, required this.child, this.delay = Duration.zero});
+  const _FadeSlideIn({
+    super.key,
+    required this.child,
+    this.delay = Duration.zero,
+  });
 
   final Widget child;
   final Duration delay;

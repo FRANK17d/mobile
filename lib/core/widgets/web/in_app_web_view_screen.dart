@@ -107,8 +107,10 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
           actions: [
             IconButton(
               tooltip: 'Abrir en el navegador',
-              icon: const Icon(Icons.open_in_new_rounded,
-                  color: AppColors.textPrimary),
+              icon: const Icon(
+                Icons.open_in_new_rounded,
+                color: AppColors.textPrimary,
+              ),
               onPressed: _openExternal,
             ),
           ],

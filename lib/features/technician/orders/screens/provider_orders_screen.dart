@@ -6,8 +6,10 @@ import '../../../../core/network/insforge_client.dart';
 import '../../../../core/services/realtime_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
-import '../../../../core/widgets/navigation/app_menu_sheet.dart';
+import '../../../auth/services/auth_store.dart';
 import '../../account/services/credit_service.dart';
+import '../../home/widgets/technician_menu_sheet.dart';
+import '../../notifications/screens/notifications_screen.dart';
 import '../services/technician_feed_service.dart';
 
 /// Pantalla de Pedidos del prestador de servicio.
@@ -235,10 +237,22 @@ class _OrdersHeader extends StatelessWidget {
               children: [
                 _CreditPill(balance: balance),
                 const Spacer(),
-                _HeaderIcon(icon: Icons.notifications_outlined),
+                GestureDetector(
+                  onTap: () => Navigator.of(context, rootNavigator: true).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => NotificationsScreen(
+                        profileData: AuthStore.instance.value.profile,
+                      ),
+                    ),
+                  ),
+                  child: _HeaderIcon(icon: Icons.notifications_outlined),
+                ),
                 const SizedBox(width: 16),
                 GestureDetector(
-                  onTap: () => showAppMenuSheet(context),
+                  onTap: () => showTechnicianMenuSheet(
+                    context,
+                    profileData: AuthStore.instance.value.profile,
+                  ),
                   child: _HeaderIcon(icon: Icons.menu_rounded),
                 ),
               ],

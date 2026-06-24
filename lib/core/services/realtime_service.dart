@@ -26,6 +26,10 @@ class RealtimeService {
   final InsForgeClient _client = InsForgeClient();
   bool _listenersRegistered = false;
 
+  /// Evita spamear el log: se registra un único error por episodio offline.
+  /// Se reinicia al (re)conectar.
+  bool _connectErrorLogged = false;
+
   /// Canales suscritos actualmente (se re-suscriben al reconectar).
   final Set<String> _channels = {};
 
@@ -52,6 +56,10 @@ class RealtimeService {
           .disableAutoConnect()
           .setAuth({'token': token})
           .enableReconnection()
+          // Backoff más espaciado: arranca en 2s y crece hasta 20s para no
+          // martillar la red (ni el log) cuando el dispositivo está offline.
+          .setReconnectionDelay(2000)
+          .setReconnectionDelayMax(20000)
           .build(),
     );
 
@@ -59,6 +67,7 @@ class RealtimeService {
 
     if (!_listenersRegistered) {
       socket.onConnect((_) {
+        _connectErrorLogged = false;
         debugPrint('Realtime: conectado (${socket.id})');
         // Re-suscribir todos los canales tras (re)conectar.
         for (final ch in _channels) {
@@ -68,9 +77,15 @@ class RealtimeService {
       socket.onDisconnect(
         (reason) => debugPrint('Realtime: desconectado ($reason)'),
       );
-      socket.onConnectError(
-        (e) => debugPrint('Realtime: error de conexión $e'),
-      );
+      // Solo logueamos el primer error del episodio; Socket.IO sigue
+      // reintentando en segundo plano sin inundar la consola.
+      socket.onConnectError((e) {
+        if (_connectErrorLogged) return;
+        _connectErrorLogged = true;
+        debugPrint(
+          'Realtime: sin conexión, se reintentará en segundo plano. ($e)',
+        );
+      });
 
       // Re-emitir cada evento entrante a sus handlers registrados.
       socket.onAny((event, data) {

@@ -177,11 +177,13 @@ class _EditClientProfileScreenState extends State<EditClientProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Avatar ──
-                    Center(child: _AvatarEditor(
-                      pickedPhoto: _pickedPhoto,
-                      currentUrl: _currentAvatarUrl,
-                      onTap: _pickPhoto,
-                    )),
+                    Center(
+                      child: _AvatarEditor(
+                        pickedPhoto: _pickedPhoto,
+                        currentUrl: _currentAvatarUrl,
+                        onTap: _pickPhoto,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.xl),
 
                     _Label('Nombre'),
@@ -206,9 +208,7 @@ class _EditClientProfileScreenState extends State<EditClientProfileScreen> {
                     // ── Email (no editable) ──
                     _Label('Correo'),
                     const SizedBox(height: AppSpacing.xs),
-                    _ReadOnlyField(
-                      value: _email.isEmpty ? '—' : _email,
-                    ),
+                    _ReadOnlyField(value: _email.isEmpty ? '—' : _email),
                   ],
                 ),
               ),
@@ -289,7 +289,10 @@ class _AvatarEditor extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.backgroundPrimary, width: 2),
+                border: Border.all(
+                  color: AppColors.backgroundPrimary,
+                  width: 2,
+                ),
               ),
               child: const Icon(
                 Icons.photo_camera_rounded,

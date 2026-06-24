@@ -316,9 +316,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   maxLength: 6,
                   textAlign: TextAlign.center,
                   onChanged: (_) => setState(() => _error = null),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   style: AppTypography.headingMedium.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 8,
@@ -403,7 +401,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // ── Fase 3: éxito ──
   Widget _buildSuccess() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPaddingH),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenPaddingH,
+      ),
       child: Column(
         children: [
           const Spacer(flex: 2),
@@ -480,7 +480,11 @@ class _FieldHint extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.error),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 14,
+            color: AppColors.error,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
@@ -544,7 +548,10 @@ class _PasswordField extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
     );
   }

@@ -179,9 +179,7 @@ class RequestDetail {
     districtName: j['district_name'] as String? ?? '',
     address: j['address'] as String?,
     imageUrls:
-        (j['image_urls'] as List<dynamic>?)
-            ?.map((e) => e as String)
-            .toList() ??
+        (j['image_urls'] as List<dynamic>?)?.map((e) => e as String).toList() ??
         const [],
     needsInvoice: j['needs_invoice'] as bool? ?? false,
     preferredDate: j['preferred_date'] != null
