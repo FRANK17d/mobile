@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../../client/reviews/screens/submit_review_screen.dart';
 import '../../../support/screens/ai_support_screen.dart';
 import '../services/request_service.dart';
 import '../widgets/request_widgets.dart';
@@ -394,6 +395,26 @@ class _Body extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
                 ],
 
+                // ── Calificar técnico ──
+                if (detail.assignedTechnicianId != null &&
+                    (detail.status == 'assigned' ||
+                        detail.status == 'in_progress' ||
+                        detail.status == 'completed')) ...[
+                  _RateButton(
+                    onTap: () =>
+                        Navigator.of(context, rootNavigator: true).push<bool>(
+                          MaterialPageRoute<bool>(
+                            builder: (_) => SubmitReviewScreen(
+                              requestId: detail.id,
+                              technicianName: 'tu técnico',
+                              requestTitle: detail.title,
+                            ),
+                          ),
+                        ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+
                 if (detail.status == 'pending_review') ...[
                   Center(
                     child: _SupportButton(
@@ -638,6 +659,44 @@ class _ApplicantsButton extends StatelessWidget {
             Text(
               count > 0 ? 'Ver postulaciones ($count)' : 'Ver postulaciones',
               style: AppTypography.buttonMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RateButton extends StatelessWidget {
+  const _RateButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFFFC107),
+          side: const BorderSide(color: Color(0xFFFFC107)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.star_rounded, size: 20, color: Color(0xFFFFC107)),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              'Calificar técnico',
+              style: AppTypography.buttonMedium.copyWith(
+                color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),
