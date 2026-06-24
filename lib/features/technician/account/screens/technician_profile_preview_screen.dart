@@ -11,6 +11,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../../client/reviews/services/review_service.dart';
 import '../services/work_posts_service.dart';
 
 class TechnicianPublicPreviewScreen extends StatefulWidget {
@@ -26,8 +27,11 @@ class TechnicianPublicPreviewScreen extends StatefulWidget {
 class _TechnicianPublicPreviewScreenState
     extends State<TechnicianPublicPreviewScreen> {
   final WorkPostsService _workPostsService = WorkPostsService();
+  final ReviewService _reviewService = ReviewService();
   List<TechnicianWorkPost> _workPosts = const [];
+  List<TechnicianReview> _reviews = const [];
   bool _loadingWorkPosts = true;
+  bool _loadingReviews = true;
 
   @override
   void initState() {
@@ -35,8 +39,10 @@ class _TechnicianPublicPreviewScreenState
     final data = _TechnicianProfileViewData.from(widget.profileData);
     if (data.technicianId.isEmpty) {
       _loadingWorkPosts = false;
+      _loadingReviews = false;
     } else {
       _loadWorkPosts(data.technicianId);
+      _loadReviews(data.technicianId);
     }
   }
 
@@ -46,6 +52,15 @@ class _TechnicianPublicPreviewScreenState
     setState(() {
       _workPosts = posts;
       _loadingWorkPosts = false;
+    });
+  }
+
+  Future<void> _loadReviews(String technicianId) async {
+    final reviews = await _reviewService.getTechnicianReviews(technicianId);
+    if (!mounted) return;
+    setState(() {
+      _reviews = reviews;
+      _loadingReviews = false;
     });
   }
 
@@ -65,6 +80,8 @@ class _TechnicianPublicPreviewScreenState
                 data: data,
                 workPosts: _workPosts,
                 loadingWorkPosts: _loadingWorkPosts,
+                reviews: _reviews,
+                loadingReviews: _loadingReviews,
               ),
               Container(
                 width: double.infinity,
@@ -265,11 +282,15 @@ class _PublicProfileDetails extends StatelessWidget {
     required this.data,
     required this.workPosts,
     required this.loadingWorkPosts,
+    required this.reviews,
+    required this.loadingReviews,
   });
 
   final _TechnicianProfileViewData data;
   final List<TechnicianWorkPost> workPosts;
   final bool loadingWorkPosts;
+  final List<TechnicianReview> reviews;
+  final bool loadingReviews;
 
   @override
   Widget build(BuildContext context) {
@@ -341,6 +362,101 @@ class _PublicProfileDetails extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
           ),
+          // ── Reseñas ──
+          if (loadingReviews || reviews.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            const Divider(color: AppColors.border, height: 1),
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionTitle('Reseñas de clientes'),
+            const SizedBox(height: AppSpacing.md),
+            if (loadingReviews)
+              const SizedBox(
+                height: 60,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else
+              ...reviews.take(5).map((r) => _ReviewTile(review: r)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  const _ReviewTile({required this.review});
+
+  final TechnicianReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = review.clientFirstName ?? 'Cliente';
+    final stars = List.generate(
+      5,
+      (i) => Icon(
+        i < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+        size: 16,
+        color: i < review.rating
+            ? const Color(0xFFFFC107)
+            : AppColors.neutral300,
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.neutral200,
+                backgroundImage: review.clientAvatarUrl != null
+                    ? NetworkImage(review.clientAvatarUrl!)
+                    : null,
+                child: review.clientAvatarUrl == null
+                    ? const Icon(
+                        Icons.person,
+                        size: 16,
+                        color: AppColors.neutral500,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  name,
+                  style: AppTypography.titleMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              ...stars,
+            ],
+          ),
+          if (review.comment != null && review.comment!.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              review.comment!,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
+            ),
+          ],
+          if (review.categoryName != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              review.categoryName!,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ],
         ],
       ),
     );
