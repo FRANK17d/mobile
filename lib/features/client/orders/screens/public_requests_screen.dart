@@ -287,7 +287,11 @@ class _PublicRequestsScreenState extends State<PublicRequestsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_off_rounded, size: 56, color: AppColors.neutral300),
+            Icon(
+              Icons.search_off_rounded,
+              size: 56,
+              color: AppColors.neutral300,
+            ),
             const SizedBox(height: 12),
             Text(
               'No hay pedidos para mostrar',
@@ -435,8 +439,11 @@ class _PublicRequestCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 18,
-                    color: AppColors.neutral500),
+                const Icon(
+                  Icons.person_outline,
+                  size: 18,
+                  color: AppColors.neutral500,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -449,8 +456,10 @@ class _PublicRequestCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: badge.bg,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
@@ -464,8 +473,10 @@ class _PublicRequestCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.neutral400),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutral400,
+                ),
               ],
             ),
           ],
@@ -524,6 +535,10 @@ class _IconLine extends StatelessWidget {
         bg: AppColors.neutral200,
       );
     default:
-      return (label: status, color: AppColors.neutral600, bg: AppColors.neutral200);
+      return (
+        label: status,
+        color: AppColors.neutral600,
+        bg: AppColors.neutral200,
+      );
   }
 }

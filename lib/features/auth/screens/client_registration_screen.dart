@@ -706,10 +706,7 @@ class _Step3Password extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
 
           // ── Terminos y condiciones (enlaces abren WebView) ──
-          TermsAcceptanceCheckbox(
-            value: acceptTerms,
-            onChanged: onToggleTerms,
-          ),
+          TermsAcceptanceCheckbox(value: acceptTerms, onChanged: onToggleTerms),
         ],
       ),
     );

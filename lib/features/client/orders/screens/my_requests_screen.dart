@@ -87,9 +87,9 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
   }
 
   void _openHowItWorks() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const HowItWorksScreen()));
   }
 
   Future<void> _openDetail(MyRequest r) async {
@@ -155,7 +155,9 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: ListView.separated(
-                          padding: const EdgeInsets.all(AppSpacing.screenPaddingH),
+                          padding: const EdgeInsets.all(
+                            AppSpacing.screenPaddingH,
+                          ),
                           itemCount: _requests.length,
                           separatorBuilder: (_, _) =>
                               const SizedBox(height: 12),
@@ -433,7 +435,10 @@ class _RequestCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(request.categoryEmoji, style: const TextStyle(fontSize: 18)),
+                Text(
+                  request.categoryEmoji,
+                  style: const TextStyle(fontSize: 18),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

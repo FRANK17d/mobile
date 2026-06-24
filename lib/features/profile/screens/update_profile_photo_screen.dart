@@ -164,7 +164,9 @@ class _UpdateProfilePhotoScreenState extends State<UpdateProfilePhotoScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      _bullet('Usa una foto donde se te vea bien, sin lentes oscuros.'),
+                      _bullet(
+                        'Usa una foto donde se te vea bien, sin lentes oscuros.',
+                      ),
                       _bullet('Que no sea una foto grupal.'),
                       _bullet(
                         'Puede ser una foto de medio cuerpo hacia arriba, de '
@@ -250,7 +252,10 @@ class _UpdateProfilePhotoScreenState extends State<UpdateProfilePhotoScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 7, right: 8),
-            child: CircleAvatar(radius: 2.5, backgroundColor: AppColors.textSecondary),
+            child: CircleAvatar(
+              radius: 2.5,
+              backgroundColor: AppColors.textSecondary,
+            ),
           ),
           Expanded(
             child: Text(
@@ -315,7 +320,11 @@ class _PlaceholderIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Icon(Icons.person_outline_rounded, size: 44, color: AppColors.neutral500),
+      child: Icon(
+        Icons.person_outline_rounded,
+        size: 44,
+        color: AppColors.neutral500,
+      ),
     );
   }
 }

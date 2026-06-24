@@ -397,14 +397,12 @@ class _Body extends StatelessWidget {
                 if (detail.status == 'pending_review') ...[
                   Center(
                     child: _SupportButton(
-                      onTap: () => Navigator.of(
-                        context,
-                        rootNavigator: true,
-                      ).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const AiSupportScreen(),
-                        ),
-                      ),
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AiSupportScreen(),
+                            ),
+                          ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
@@ -865,7 +863,11 @@ class _ImageCarouselState extends State<_ImageCarousel> {
             ),
             child: Padding(
               padding: EdgeInsets.all(6),
-              child: Icon(Icons.fullscreen_rounded, size: 18, color: Colors.white),
+              child: Icon(
+                Icons.fullscreen_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
             ),
           ),
         ),

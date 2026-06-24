@@ -70,7 +70,10 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
                         shape: BoxShape.circle,
                         color: AppColors.neutral200,
                       ),
-                      child: const Icon(Icons.close, color: AppColors.neutral700),
+                      child: const Icon(
+                        Icons.close,
+                        color: AppColors.neutral700,
+                      ),
                     ),
                   ),
                 ),
@@ -123,8 +126,10 @@ class _ProvidersListScreenState extends State<ProvidersListScreen> {
                           itemCount: _providers.length,
                           separatorBuilder: (_, _) =>
                               const SizedBox(height: AppSpacing.md),
-                          itemBuilder: (_, i) =>
-                              _ProviderCard(provider: _providers[i], onTap: _soon),
+                          itemBuilder: (_, i) => _ProviderCard(
+                            provider: _providers[i],
+                            onTap: _soon,
+                          ),
                         ),
                       ),
               ),
@@ -192,7 +197,10 @@ class _ProviderCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => const ColoredBox(
                           color: AppColors.neutral200,
-                          child: Icon(Icons.person, color: AppColors.neutral500),
+                          child: Icon(
+                            Icons.person,
+                            color: AppColors.neutral500,
+                          ),
                         ),
                       )
                     : const ColoredBox(
@@ -220,8 +228,11 @@ class _ProviderCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified, size: 16,
-                          color: Color(0xFF2D9CDB)),
+                      const Icon(
+                        Icons.verified,
+                        size: 16,
+                        color: Color(0xFF2D9CDB),
+                      ),
                     ],
                   ),
                   if (provider.districtName != null &&
@@ -232,7 +243,8 @@ class _ProviderCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                  if (provider.bio != null && provider.bio!.trim().isNotEmpty) ...[
+                  if (provider.bio != null &&
+                      provider.bio!.trim().isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       provider.bio!,
@@ -248,7 +260,10 @@ class _ProviderCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.neutral400),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.neutral400,
+            ),
           ],
         ),
       ),

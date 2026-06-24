@@ -106,82 +106,81 @@ class _CategoriesCarouselState extends State<CategoriesCarousel>
 
     return RepaintBoundary(
       child: GestureDetector(
-      onPanDown: (_) => _pauseScroll(),
-      onPanEnd: (_) => _resumeScroll(),
-      onPanCancel: _resumeScroll,
-      child: SizedBox(
-        width: double.infinity,
-        height: 90,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ClipRect(
-                child: ListView.separated(
-                  controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const NeverScrollableScrollPhysics(),
-                  clipBehavior: Clip.hardEdge,
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(width: _itemSpacing),
-                  itemBuilder: (_, index) {
-                    final cat = items[index];
-                    final tap = widget.onCategoryTap;
-                    // Las categorías del home son solo visuales: si no se pasa
-                    // onCategoryTap, el chip no navega a ningún lado.
-                    return _CategoryChip(
-                      label: cat.name,
-                      emoji: cat.emoji,
-                      onTap: tap == null ? null : () => tap(cat.name),
-                    );
-                  },
-
+        onPanDown: (_) => _pauseScroll(),
+        onPanEnd: (_) => _resumeScroll(),
+        onPanCancel: _resumeScroll,
+        child: SizedBox(
+          width: double.infinity,
+          height: 90,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRect(
+                  child: ListView.separated(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    clipBehavior: Clip.hardEdge,
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(width: _itemSpacing),
+                    itemBuilder: (_, index) {
+                      final cat = items[index];
+                      final tap = widget.onCategoryTap;
+                      // Las categorías del home son solo visuales: si no se pasa
+                      // onCategoryTap, el chip no navega a ningún lado.
+                      return _CategoryChip(
+                        label: cat.name,
+                        emoji: cat.emoji,
+                        onTap: tap == null ? null : () => tap(cat.name),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 34,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        Colors.white,
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 34,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Colors.white,
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: 34,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      colors: [
-                        Colors.white,
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 34,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerRight,
+                        end: Alignment.centerLeft,
+                        colors: [
+                          Colors.white,
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

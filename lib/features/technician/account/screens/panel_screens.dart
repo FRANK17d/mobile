@@ -205,8 +205,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               trailing: IconButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        TechnicianPublicPreviewScreen(profileData: _profileData),
+                    builder: (_) => TechnicianPublicPreviewScreen(
+                      profileData: _profileData,
+                    ),
                   ),
                 ),
                 icon: const Icon(
@@ -501,7 +502,8 @@ class _EditSheet extends StatefulWidget {
 
 class _EditSheetState extends State<_EditSheet> {
   late final Map<String, TextEditingController> _controllers = {
-    for (final f in widget.fields) f.key: TextEditingController(text: f.initial),
+    for (final f in widget.fields)
+      f.key: TextEditingController(text: f.initial),
   };
   bool _saving = false;
 
@@ -524,7 +526,9 @@ class _EditSheetState extends State<_EditSheet> {
     setState(() => _saving = false);
     showAppToast(
       context,
-      message: res.success ? 'Cambios guardados.' : (res.message ?? 'No se pudo guardar.'),
+      message: res.success
+          ? 'Cambios guardados.'
+          : (res.message ?? 'No se pudo guardar.'),
       type: res.success ? ToastType.success : ToastType.error,
     );
     if (res.success) Navigator.of(context).pop(true);
@@ -596,7 +600,10 @@ class _EditSheetState extends State<_EditSheet> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1090,7 +1097,9 @@ class _CoverageZoneScreenState extends State<CoverageZoneScreen> {
             Expanded(
               child: _loading
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     )
                   : SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
@@ -1341,7 +1350,9 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     setState(() => _saving = false);
     showAppToast(
       context,
-      message: res.success ? 'Respuestas guardadas.' : (res.message ?? 'No se pudo guardar.'),
+      message: res.success
+          ? 'Respuestas guardadas.'
+          : (res.message ?? 'No se pudo guardar.'),
       type: res.success ? ToastType.success : ToastType.error,
     );
     if (res.success) {

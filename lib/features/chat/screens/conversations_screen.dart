@@ -116,7 +116,9 @@ class _ConversationsViewState extends State<_ConversationsView> {
 
   void _openNotifications() {
     Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => const ClientNotificationsScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => const ClientNotificationsScreen(),
+      ),
     );
   }
 

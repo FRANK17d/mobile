@@ -210,8 +210,24 @@ class _RequestServiceWizardScreenState
     final d = _norm(desc);
     final synonyms = <(List<String>, String)>[
       (['pint', 'cuadro', 'pared', 'mural', 'barniz'], 'pintur'),
-      (['electr', 'luz', 'enchufe', 'corto', 'cable', 'foco', 'tomacorr'], 'electr'),
-      (['plome', 'gasfi', 'cano', 'tuberi', 'fuga', 'desague', 'inodoro', 'grifo', 'caño'], 'gasf'),
+      (
+        ['electr', 'luz', 'enchufe', 'corto', 'cable', 'foco', 'tomacorr'],
+        'electr',
+      ),
+      (
+        [
+          'plome',
+          'gasfi',
+          'cano',
+          'tuberi',
+          'fuga',
+          'desague',
+          'inodoro',
+          'grifo',
+          'caño',
+        ],
+        'gasf',
+      ),
       (['limpie', 'limpiar', 'aseo'], 'limpie'),
       (['carpint', 'mueble', 'madera', 'closet', 'ropero'], 'carpint'),
       (['albani', 'cement', 'construc', 'ladrillo', 'tarrajeo'], 'alban'),
@@ -721,8 +737,11 @@ class _DescriptionStep extends StatelessWidget {
                       ),
                     )
                   else
-                    const Icon(Icons.auto_awesome,
-                        size: 16, color: AppColors.primary),
+                    const Icon(
+                      Icons.auto_awesome,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
                   const SizedBox(width: 6),
                   Text(
                     suggesting ? 'Pensando...' : 'Sugerir categoría con IA',
@@ -1167,8 +1186,18 @@ class _DayStripState extends State<_DayStrip> {
 
   static const _weekdays = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   static const _months = [
-    'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-    'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+    'ENE',
+    'FEB',
+    'MAR',
+    'ABR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AGO',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DIC',
   ];
 
   @override

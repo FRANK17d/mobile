@@ -101,8 +101,7 @@ class PublicRequest {
   final DateTime? createdAt;
 
   /// Código corto para mostrar como "#XXXX" (los pedidos usan uuid).
-  String get shortCode =>
-      id.replaceAll('-', '').substring(0, 4).toUpperCase();
+  String get shortCode => id.replaceAll('-', '').substring(0, 4).toUpperCase();
 
   factory PublicRequest.fromJson(Map<String, dynamic> j) => PublicRequest(
     id: j['id'] as String,

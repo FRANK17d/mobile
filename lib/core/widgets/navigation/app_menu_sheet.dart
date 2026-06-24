@@ -56,9 +56,10 @@ class _AppMenuFullScreen extends StatelessWidget {
   /// Empuja una pantalla ENCIMA del menú (no go_router): al retroceder vuelve
   /// al menú hamburguesa.
   void _pushScreen(BuildContext context, Widget screen) {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   /// Navega a una ruta go_router tras cerrar el menú.
@@ -179,7 +180,8 @@ class _AppMenuFullScreen extends StatelessWidget {
                   _MenuTile(
                     icon: Icons.receipt_long_outlined,
                     label: 'Pedidos',
-                    onTap: () => _pushScreen(context, const PublicRequestsScreen()),
+                    onTap: () =>
+                        _pushScreen(context, const PublicRequestsScreen()),
                   ),
                   _MenuTile(
                     icon: Icons.layers_outlined,
@@ -222,11 +224,8 @@ class _AppMenuFullScreen extends StatelessWidget {
                   _MenuTile(
                     icon: Icons.language_rounded,
                     label: 'Nuestro sitio web',
-                    onTap: () => _openWebView(
-                      context,
-                      'https://tokeplus.app',
-                      'Toke+',
-                    ),
+                    onTap: () =>
+                        _openWebView(context, 'https://tokeplus.app', 'Toke+'),
                   ),
 
                   const SizedBox(height: 32),

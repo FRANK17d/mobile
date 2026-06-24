@@ -48,7 +48,8 @@ class _ClientShellState extends State<ClientShell> {
   }
 
   List<NavBarItem> get _items {
-    final avatarUrl = AuthStore.instance.value.profile?['avatar_url'] as String?;
+    final avatarUrl =
+        AuthStore.instance.value.profile?['avatar_url'] as String?;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
     return [
       const NavBarItem(

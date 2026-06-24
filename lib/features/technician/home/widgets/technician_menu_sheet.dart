@@ -70,9 +70,10 @@ class _TechnicianMenuFullScreenState extends State<_TechnicianMenuFullScreen> {
 
   /// Empuja una pantalla ENCIMA del menú: al retroceder vuelve al menú.
   void _push(Widget screen) {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   /// Cierra el menú y cambia de tab en el shell del técnico.

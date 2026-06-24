@@ -251,7 +251,9 @@ class _OtpBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color idleBorder = hasError
         ? AppColors.error
-        : (filled ? AppColors.primary.withValues(alpha: 0.45) : Colors.transparent);
+        : (filled
+              ? AppColors.primary.withValues(alpha: 0.45)
+              : Colors.transparent);
 
     OutlineInputBorder border(Color color, double w) => OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppSpacing.radiusLg),

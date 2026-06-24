@@ -267,20 +267,21 @@ class _HeroSection extends StatelessWidget {
                                 ctx,
                                 profileData: profileData,
                               )
-                            : showClientMenuSheet(ctx, profileData: profileData))
+                            : showClientMenuSheet(
+                                ctx,
+                                profileData: profileData,
+                              ))
                       : showAppMenuSheet(ctx),
-                  onNotificationTap: () => Navigator.of(
-                    ctx,
-                    rootNavigator: true,
-                  ).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => AuthStore.instance.value.isTechnician
-                          ? NotificationsScreen(
-                              profileData: AuthStore.instance.value.profile,
-                            )
-                          : const ClientNotificationsScreen(),
-                    ),
-                  ),
+                  onNotificationTap: () =>
+                      Navigator.of(ctx, rootNavigator: true).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AuthStore.instance.value.isTechnician
+                              ? NotificationsScreen(
+                                  profileData: AuthStore.instance.value.profile,
+                                )
+                              : const ClientNotificationsScreen(),
+                        ),
+                      ),
                 ),
               ),
 
@@ -297,8 +298,10 @@ class _HeroSection extends StatelessWidget {
                   onOpenOrder: (req) => Navigator.of(ctx, rootNavigator: true)
                       .push(
                         MaterialPageRoute<void>(
-                          builder: (_) =>
-                              OrderReviewScreen(requestId: req.id, initial: req),
+                          builder: (_) => OrderReviewScreen(
+                            requestId: req.id,
+                            initial: req,
+                          ),
                         ),
                       )
                       .then((_) => onReloadOrders?.call()),

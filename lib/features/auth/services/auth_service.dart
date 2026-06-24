@@ -677,7 +677,9 @@ class AuthService {
           message: r['message'] as String?,
         );
       }
-      debugPrint('updateProfile error: ${response.statusCode} ${response.body}');
+      debugPrint(
+        'updateProfile error: ${response.statusCode} ${response.body}',
+      );
       return (success: false, message: 'No se pudo actualizar el perfil.');
     } catch (e) {
       debugPrint('Exception updateProfile: $e');
@@ -758,7 +760,10 @@ class AuthService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final r = jsonDecode(response.body);
         if (r is Map) {
-          return (success: r['success'] == true, message: r['message'] as String?);
+          return (
+            success: r['success'] == true,
+            message: r['message'] as String?,
+          );
         }
         return (success: false, message: 'Respuesta inesperada del servidor.');
       }

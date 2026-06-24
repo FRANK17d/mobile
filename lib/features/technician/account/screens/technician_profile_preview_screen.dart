@@ -1006,8 +1006,18 @@ class _TechnicianProfileViewData {
   static String _joinedLabel(DateTime? d) {
     if (d == null) return 'Miembro de Toke+';
     const months = [
-      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
     ];
     return 'Se unió a Toke+ en ${months[d.month - 1]} de ${d.year}';
   }
@@ -1031,9 +1041,10 @@ class _TechnicianProfileViewData {
     final joinedAt = createdAtRaw is String
         ? DateTime.tryParse(createdAtRaw)
         : null;
-    final status = _firstString([technician, profileData], [
-      'verification_status',
-    ]);
+    final status = _firstString(
+      [technician, profileData],
+      ['verification_status'],
+    );
 
     return _TechnicianProfileViewData(
       rawProfileData: profileData,

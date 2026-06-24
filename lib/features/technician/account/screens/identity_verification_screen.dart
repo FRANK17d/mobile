@@ -195,127 +195,129 @@ class _IdentityVerificationScreenState
                 child: CircularProgressIndicator(color: AppColors.primary),
               )
             : Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _StatusNotice(
-                      status: _status,
-                      rejectionReason: _rejectionReason,
-                    ),
-                    const SizedBox(height: 18),
-                    if (_existingDocs.isNotEmpty) ...[
-                      _SubmittedDocsSection(
-                        docs: _existingDocs,
-                        headers: _imgHeaders,
-                        urlForKey: _service.storageUrlForKey,
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _StatusNotice(
+                            status: _status,
+                            rejectionReason: _rejectionReason,
+                          ),
+                          const SizedBox(height: 18),
+                          if (_existingDocs.isNotEmpty) ...[
+                            _SubmittedDocsSection(
+                              docs: _existingDocs,
+                              headers: _imgHeaders,
+                              urlForKey: _service.storageUrlForKey,
+                            ),
+                            const SizedBox(height: 22),
+                          ],
+                          Text(
+                            _existingDocs.isEmpty
+                                ? 'Documentos requeridos'
+                                : 'Reenviar documentos',
+                            style: GoogleFonts.nunito(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Usaremos estas imágenes solo para validar tu cuenta. El bucket es privado y visible para el equipo de revisión.',
+                            style: GoogleFonts.nunito(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                              height: 1.35,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _DocumentTile(
+                            title: 'DNI frontal',
+                            description:
+                                'Foto clara del lado donde aparecen tus datos.',
+                            imagePath: _dniFrontPath,
+                            onTap: () => _chooseSource(_DocumentSlot.dniFront),
+                          ),
+                          const SizedBox(height: 12),
+                          _DocumentTile(
+                            title: 'DNI reverso',
+                            description:
+                                'Foto clara del reverso del documento.',
+                            imagePath: _dniBackPath,
+                            onTap: () => _chooseSource(_DocumentSlot.dniBack),
+                          ),
+                          const SizedBox(height: 12),
+                          _DocumentTile(
+                            title: 'Selfie',
+                            description:
+                                'Tu rostro debe verse completo y con buena luz.',
+                            imagePath: _selfiePath,
+                            onTap: () => _chooseSource(_DocumentSlot.selfie),
+                          ),
+                          const SizedBox(height: 12),
+                          _DocumentTile(
+                            title: 'Certificado de estudios',
+                            description:
+                                'Opcional — título, certificado de cursos o constancia de tu oficio.',
+                            imagePath: _certificatePath,
+                            onTap: () =>
+                                _chooseSource(_DocumentSlot.certificate),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 22),
-                    ],
-                    Text(
-                      _existingDocs.isEmpty
-                          ? 'Documentos requeridos'
-                          : 'Reenviar documentos',
-                      style: GoogleFonts.nunito(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 18,
+                          offset: const Offset(0, -8),
+                        ),
+                      ],
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _canSubmit ? _submit : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: AppColors.neutral300,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Enviar a revisión',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Usaremos estas imágenes solo para validar tu cuenta. El bucket es privado y visible para el equipo de revisión.',
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    _DocumentTile(
-                      title: 'DNI frontal',
-                      description:
-                          'Foto clara del lado donde aparecen tus datos.',
-                      imagePath: _dniFrontPath,
-                      onTap: () => _chooseSource(_DocumentSlot.dniFront),
-                    ),
-                    const SizedBox(height: 12),
-                    _DocumentTile(
-                      title: 'DNI reverso',
-                      description: 'Foto clara del reverso del documento.',
-                      imagePath: _dniBackPath,
-                      onTap: () => _chooseSource(_DocumentSlot.dniBack),
-                    ),
-                    const SizedBox(height: 12),
-                    _DocumentTile(
-                      title: 'Selfie',
-                      description:
-                          'Tu rostro debe verse completo y con buena luz.',
-                      imagePath: _selfiePath,
-                      onTap: () => _chooseSource(_DocumentSlot.selfie),
-                    ),
-                    const SizedBox(height: 12),
-                    _DocumentTile(
-                      title: 'Certificado de estudios',
-                      description:
-                          'Opcional — título, certificado de cursos o constancia de tu oficio.',
-                      imagePath: _certificatePath,
-                      onTap: () => _chooseSource(_DocumentSlot.certificate),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, -8),
                   ),
                 ],
               ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _canSubmit ? _submit : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: AppColors.neutral300,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          'Enviar a revisión',
-                          style: GoogleFonts.nunito(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
