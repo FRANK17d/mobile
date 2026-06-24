@@ -26,6 +26,8 @@ import '../widgets/search_header.dart';
 import '../widgets/social_media_section.dart';
 import '../widgets/success_stories_section.dart';
 import '../../../../core/widgets/navigation/app_menu_sheet.dart';
+import '../../../technician/home/widgets/technician_menu_sheet.dart';
+import '../../../technician/notifications/screens/notifications_screen.dart';
 
 /// Pantalla principal del cliente.
 ///
@@ -260,14 +262,23 @@ class _HeroSection extends StatelessWidget {
                   isAuthenticated: isAuthenticated,
                   onLoginTap: () => ctx.push(AppRoutes.login),
                   onMenuTap: () => isAuthenticated
-                      ? showClientMenuSheet(ctx, profileData: profileData)
+                      ? (AuthStore.instance.value.isTechnician
+                            ? showTechnicianMenuSheet(
+                                ctx,
+                                profileData: profileData,
+                              )
+                            : showClientMenuSheet(ctx, profileData: profileData))
                       : showAppMenuSheet(ctx),
                   onNotificationTap: () => Navigator.of(
                     ctx,
                     rootNavigator: true,
                   ).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const ClientNotificationsScreen(),
+                      builder: (_) => AuthStore.instance.value.isTechnician
+                          ? NotificationsScreen(
+                              profileData: AuthStore.instance.value.profile,
+                            )
+                          : const ClientNotificationsScreen(),
                     ),
                   ),
                 ),

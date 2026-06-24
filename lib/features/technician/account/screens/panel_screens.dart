@@ -8,6 +8,12 @@ import '../../../../core/constants/app_images.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../../auth/services/auth_service.dart';
+import '../../../auth/services/auth_store.dart';
+import '../../../auth/services/district_service.dart';
+import '../services/services_catalog_service.dart';
+import '../../../profile/screens/update_profile_photo_screen.dart';
+import 'technician_profile_preview_screen.dart';
 
 // ============================================================================
 // SHARED WIDGETS
@@ -117,22 +123,74 @@ class _StickyBottomButton extends StatelessWidget {
 // 1. EditProfileScreen
 // ============================================================================
 
-class EditProfileScreen extends StatelessWidget {
+class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
 
   const EditProfileScreen({super.key, this.profileData});
 
   @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final AuthService _auth = AuthService();
+  late Map<String, dynamic>? _profileData = widget.profileData;
+
+  Future<void> _refreshProfile() async {
+    final fresh = await _auth.getMyTechnicianProfile();
+    if (!mounted) return;
+    AuthStore.instance.setAuthenticated(fresh);
+    setState(() => _profileData = fresh);
+  }
+
+  Future<void> _openEditSheet({
+    required String title,
+    required List<_EditSheetField> fields,
+    required Future<({bool success, String? message})> Function(
+      Map<String, String> values,
+    )
+    onSave,
+  }) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.backgroundPrimary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusLg),
+        ),
+      ),
+      builder: (_) => _EditSheet(title: title, fields: fields, onSave: onSave),
+    );
+    if (saved == true) await _refreshProfile();
+  }
+
+  /// Guarda la casilla "Tengo factura legal" (toggle directo).
+  Future<void> _setInvoice(bool value) async {
+    final res = await _auth.updateTechnicianProfile(hasInvoice: value);
+    if (!mounted) return;
+    showAppToast(
+      context,
+      message: res.success
+          ? (value ? 'Factura legal activada.' : 'Factura legal desactivada.')
+          : (res.message ?? 'No se pudo guardar.'),
+      type: res.success ? ToastType.success : ToastType.error,
+    );
+    if (res.success) await _refreshProfile();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final String firstName = profileData?['first_name'] as String? ?? 'Usuario';
-    final String lastName = profileData?['last_name'] as String? ?? '';
+    final String firstName =
+        _profileData?['first_name'] as String? ?? 'Usuario';
+    final String lastName = _profileData?['last_name'] as String? ?? '';
     final String fullName = '$firstName $lastName'.trim();
-    final String avatarUrl = profileData?['avatar_url'] as String? ?? '';
+    final String avatarUrl = _profileData?['avatar_url'] as String? ?? '';
     final Map<String, dynamic> technician =
-        profileData?['technician'] as Map<String, dynamic>? ?? {};
+        _profileData?['technician'] as Map<String, dynamic>? ?? {};
     final String district =
         technician['district'] as String? ??
-        profileData?['district'] as String? ??
+        _profileData?['district'] as String? ??
         'Sin especificar';
     final String bio = technician['bio'] as String? ?? 'Sin presentación aún';
 
@@ -145,13 +203,12 @@ class EditProfileScreen extends StatelessWidget {
             _PanelAppBar(
               title: 'Mi perfil',
               trailing: IconButton(
-                onPressed: () {
-                  showAppToast(
-                    context,
-                    message: 'Disponible pronto',
-                    type: ToastType.info,
-                  );
-                },
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        TechnicianPublicPreviewScreen(profileData: _profileData),
+                  ),
+                ),
                 icon: const Icon(
                   Icons.visibility_outlined,
                   color: AppColors.secondaryDark,
@@ -216,13 +273,13 @@ class EditProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           GestureDetector(
-                            onTap: () {
-                              showAppToast(
-                                context,
-                                message: 'Disponible pronto',
-                                type: ToastType.info,
-                              );
-                            },
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => UpdateProfilePhotoScreen(
+                                  profile: _profileData,
+                                ),
+                              ),
+                            ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -263,57 +320,83 @@ class EditProfileScreen extends StatelessWidget {
                     _EditableField(
                       label: 'Nombre público',
                       value: fullName,
-                      onEdit: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onEdit: () => _openEditSheet(
+                        title: 'Editar nombre',
+                        fields: [
+                          _EditSheetField(
+                            key: 'first',
+                            label: 'Nombre',
+                            initial:
+                                _profileData?['first_name'] as String? ?? '',
+                          ),
+                          _EditSheetField(
+                            key: 'last',
+                            label: 'Apellido',
+                            initial:
+                                _profileData?['last_name'] as String? ?? '',
+                          ),
+                        ],
+                        onSave: (v) => _auth.updateTechnicianProfile(
+                          firstName: v['first'],
+                          lastName: v['last'],
+                        ),
+                      ),
                     ),
                     _EditableField(
                       label: 'Nombre completo',
                       value: fullName,
-                      onEdit: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onEdit: () => _openEditSheet(
+                        title: 'Editar nombre',
+                        fields: [
+                          _EditSheetField(
+                            key: 'first',
+                            label: 'Nombre',
+                            initial:
+                                _profileData?['first_name'] as String? ?? '',
+                          ),
+                          _EditSheetField(
+                            key: 'last',
+                            label: 'Apellido',
+                            initial:
+                                _profileData?['last_name'] as String? ?? '',
+                          ),
+                        ],
+                        onSave: (v) => _auth.updateTechnicianProfile(
+                          firstName: v['first'],
+                          lastName: v['last'],
+                        ),
+                      ),
                     ),
                     _EditableField(
                       label: 'Ciudad donde vives',
                       value: district,
-                      onEdit: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onEdit: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              CoverageZoneScreen(profileData: _profileData),
+                        ),
+                      ),
                     ),
                     _EditableField(
                       label: 'Presentación / Biografía',
                       value: bio,
-                      onEdit: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onEdit: () => _openEditSheet(
+                        title: 'Editar presentación',
+                        fields: [
+                          _EditSheetField(
+                            key: 'bio',
+                            label: 'Contanos sobre vos y tu experiencia',
+                            initial: technician['bio'] as String? ?? '',
+                            multiline: true,
+                          ),
+                        ],
+                        onSave: (v) =>
+                            _auth.updateTechnicianProfile(bio: v['bio']),
+                      ),
                     ),
-                    _EditableField(
-                      label: 'Tengo factura legal',
-                      value: 'No',
-                      onEdit: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                    _InvoiceToggleTile(
+                      value: technician['has_invoice'] == true,
+                      onChanged: _setInvoice,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     const _GradientDivider(),
@@ -322,57 +405,53 @@ class EditProfileScreen extends StatelessWidget {
                     _NavigationLink(
                       icon: Icons.description_outlined,
                       label: 'Mi ficha profesional',
-                      onTap: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => TechnicianPublicPreviewScreen(
+                            profileData: _profileData,
+                          ),
+                        ),
+                      ),
                     ),
                     _NavigationLink(
                       icon: Icons.design_services_outlined,
                       label: 'Mis servicios y habilidades',
-                      onTap: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              ServicesScreen(profileData: _profileData),
+                        ),
+                      ),
                     ),
                     _NavigationLink(
                       icon: Icons.location_on_outlined,
                       label: 'Mis zonas de cobertura',
-                      onTap: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              CoverageZoneScreen(profileData: _profileData),
+                        ),
+                      ),
                     ),
                     _NavigationLink(
                       icon: Icons.help_outline_rounded,
                       label: 'Preguntas y respuestas',
-                      onTap: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              QuestionsScreen(profileData: _profileData),
+                        ),
+                      ),
                     ),
                     _NavigationLink(
                       icon: Icons.photo_library_outlined,
                       label: 'Fotos de mis trabajos',
-                      onTap: () {
-                        showAppToast(
-                          context,
-                          message: 'Disponible pronto',
-                          type: ToastType.info,
-                        );
-                      },
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              WorkPhotosScreen(profileData: _profileData),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                   ],
@@ -381,6 +460,182 @@ class EditProfileScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _EditSheetField {
+  final String key;
+  final String label;
+  final String initial;
+  final bool multiline;
+
+  const _EditSheetField({
+    required this.key,
+    required this.label,
+    this.initial = '',
+    this.multiline = false,
+  });
+}
+
+/// Bottom sheet reutilizable para editar uno o varios campos de texto del
+/// perfil. Devuelve `true` por Navigator.pop cuando el guardado fue exitoso.
+class _EditSheet extends StatefulWidget {
+  final String title;
+  final List<_EditSheetField> fields;
+  final Future<({bool success, String? message})> Function(
+    Map<String, String> values,
+  )
+  onSave;
+
+  const _EditSheet({
+    required this.title,
+    required this.fields,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditSheet> createState() => _EditSheetState();
+}
+
+class _EditSheetState extends State<_EditSheet> {
+  late final Map<String, TextEditingController> _controllers = {
+    for (final f in widget.fields) f.key: TextEditingController(text: f.initial),
+  };
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final values = <String, String>{
+      for (final e in _controllers.entries) e.key: e.value.text.trim(),
+    };
+    final res = await widget.onSave(values);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    showAppToast(
+      context,
+      message: res.success ? 'Cambios guardados.' : (res.message ?? 'No se pudo guardar.'),
+      type: res.success ? ToastType.success : ToastType.error,
+    );
+    if (res.success) Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.screenPaddingH,
+        right: AppSpacing.screenPaddingH,
+        top: AppSpacing.xl,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.neutral200,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            widget.title,
+            style: GoogleFonts.nunito(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.secondaryDark,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          for (final f in widget.fields) ...[
+            Text(
+              f.label,
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            TextField(
+              controller: _controllers[f.key],
+              maxLines: f.multiline ? 5 : 1,
+              minLines: f.multiline ? 3 : 1,
+              textCapitalization: TextCapitalization.sentences,
+              style: GoogleFonts.nunito(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.secondaryDark,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppColors.backgroundSecondary,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.md,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  borderSide: const BorderSide(color: AppColors.neutral200),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.neutral200,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                ),
+              ),
+              child: _saving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'Guardar',
+                      style: GoogleFonts.nunito(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -444,6 +699,57 @@ class _EditableField extends StatelessWidget {
   }
 }
 
+/// Casilla "Tengo factura legal": un toggle simple (sin pantalla de edición).
+class _InvoiceToggleTile extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _InvoiceToggleTile({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tengo factura legal',
+                  style: GoogleFonts.nunito(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.secondaryDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value
+                      ? 'Puedo emitir factura a mis clientes'
+                      : 'No emito factura',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NavigationLink extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -491,149 +797,123 @@ class _NavigationLink extends StatelessWidget {
 // 2. ServicesScreen
 // ============================================================================
 
-class ServicesScreen extends StatelessWidget {
+class ServicesScreen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
 
   const ServicesScreen({super.key, this.profileData});
 
-  static const Map<String, String> _serviceEmojis = {
-    'Albañil': '🧱',
-    'Albañilería': '🧱',
-    'Electricista': '⚡',
-    'Electricidad': '⚡',
-    'Pintura': '🎨',
-    'Pintor': '🎨',
-    'Plomero': '🔧',
-    'Plomería': '🔧',
-    'Aire Acondicionado': '❄️',
-    'Climatización': '❄️',
-    'Piscinas': '🏊',
-    'Jardinería': '🌿',
-    'Jardinero': '🌿',
-    'Contratista': '🏗️',
-    'Construcción': '🏗️',
-    'Carpintería': '🪚',
-    'Carpintero': '🪚',
-    'Cerrajería': '🔑',
-    'Cerrajero': '🔑',
-    'Limpieza': '🧹',
-    'Mudanzas': '📦',
-    'Techista': '🏠',
-    'Gasista': '🔥',
-    'Herrero': '⚒️',
-    'Herrería': '⚒️',
-  };
+  @override
+  State<ServicesScreen> createState() => _ServicesScreenState();
+}
 
-  String _getEmoji(String categoryName) {
-    for (final entry in _serviceEmojis.entries) {
-      if (categoryName.toLowerCase().contains(entry.key.toLowerCase())) {
-        return entry.value;
+class _ServicesScreenState extends State<ServicesScreen> {
+  final ServicesCatalogService _catalogService = ServicesCatalogService();
+
+  List<ServiceCatalogCategory> _catalog = const [];
+  final Set<int> _selected = {};
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final cats = await _catalogService.getCatalog();
+    if (!mounted) return;
+    setState(() {
+      _catalog = cats;
+      _selected
+        ..clear()
+        ..addAll(
+          cats
+              .expand((c) => c.services)
+              .where((s) => s.selected)
+              .map((s) => s.id),
+        );
+      _loading = false;
+    });
+  }
+
+  int _selectedCountIn(ServiceCatalogCategory c) =>
+      c.services.where((s) => _selected.contains(s.id)).length;
+
+  void _toggle(int id, bool value) {
+    setState(() {
+      if (value) {
+        _selected.add(id);
+      } else {
+        _selected.remove(id);
       }
-    }
-    return '🛠️';
+    });
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final res = await _catalogService.setServices(_selected.toList());
+    if (!mounted) return;
+    setState(() => _saving = false);
+    showAppToast(
+      context,
+      message: res.success
+          ? 'Servicios guardados (${_selected.length}).'
+          : (res.message ?? 'No se pudo guardar.'),
+      type: res.success ? ToastType.success : ToastType.error,
+    );
+    if (res.success && mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> technician =
-        profileData?['technician'] as Map<String, dynamic>? ?? {};
-    final List<dynamic> categories =
-        technician['categories'] as List<dynamic>? ?? [];
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.backgroundPrimary,
         body: Column(
           children: [
-            const _PanelAppBar(title: 'Mis servicios'),
+            const _PanelAppBar(title: 'Mis servicios y habilidades'),
             const _GradientDivider(),
             Expanded(
-              child: categories.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.screenPaddingH,
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.handyman_outlined,
-                              size: 64,
-                              color: AppColors.textTertiary,
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            Text(
-                              'Aún no tenés servicios agregados',
-                              style: GoogleFonts.nunito(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.secondaryDark,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              'Agregá tus servicios para que los clientes puedan encontrarte.',
-                              style: GoogleFonts.nunito(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 2.5,
                       ),
                     )
-                  : ListView.builder(
+                  : ListView(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.screenPaddingH,
-                        vertical: AppSpacing.xl,
+                        vertical: AppSpacing.lg,
                       ),
-                      itemCount: categories.length,
-                      itemBuilder: (context, index) {
-                        final category =
-                            categories[index] as Map<String, dynamic>? ?? {};
-                        final String name =
-                            category['name'] as String? ?? 'Servicio';
-                        final String description =
-                            category['description'] as String? ??
-                            'Sin descripción';
-                        final String emoji = _getEmoji(name);
-
-                        return _ServiceCard(
-                          name: name,
-                          description: description,
-                          emoji: emoji,
-                          onEdit: () {
-                            showAppToast(
-                              context,
-                              message: 'Disponible pronto',
-                              type: ToastType.info,
-                            );
-                          },
-                          onDelete: () {
-                            showAppToast(
-                              context,
-                              message: 'Disponible pronto',
-                              type: ToastType.info,
-                            );
-                          },
-                        );
-                      },
+                      children: [
+                        Text(
+                          'Marcá los servicios que ofrecés en cada categoría. Los clientes te encontrarán por ellos.',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        ..._catalog.map(
+                          (c) => _CategoryServicesTile(
+                            category: c,
+                            selectedCount: _selectedCountIn(c),
+                            isSelected: _selected.contains,
+                            onToggle: _toggle,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxl),
+                      ],
                     ),
             ),
             _StickyBottomButton(
-              label: 'Agregar servicio',
-              onTap: () {
-                showAppToast(
-                  context,
-                  message: 'Disponible pronto',
-                  type: ToastType.info,
-                );
-              },
+              label: _saving ? 'Guardando...' : 'Guardar (${_selected.length})',
+              onTap: _saving ? () {} : _save,
             ),
           ],
         ),
@@ -642,127 +922,86 @@ class ServicesScreen extends StatelessWidget {
   }
 }
 
-class _ServiceCard extends StatelessWidget {
-  final String name;
-  final String description;
-  final String emoji;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+/// Categoría expandible con sus servicios como checkboxes. El técnico marca
+/// los que ofrece (agregar = marcar, eliminar = desmarcar).
+class _CategoryServicesTile extends StatelessWidget {
+  final ServiceCatalogCategory category;
+  final int selectedCount;
+  final bool Function(int id) isSelected;
+  final void Function(int id, bool value) onToggle;
 
-  const _ServiceCard({
-    required this.name,
-    required this.description,
-    required this.emoji,
-    required this.onEdit,
-    required this.onDelete,
+  const _CategoryServicesTile({
+    required this.category,
+    required this.selectedCount,
+    required this.isSelected,
+    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.secondaryDark,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Text(emoji, style: const TextStyle(fontSize: 38)),
-            ],
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: selectedCount > 0,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          leading: Text(category.emoji, style: const TextStyle(fontSize: 26)),
+          title: Text(
+            category.name,
+            style: GoogleFonts.nunito(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.secondaryDark,
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: onEdit,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.neutral200),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.edit_outlined,
-                        size: 16,
-                        color: AppColors.secondaryDark,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Editar servicios',
-                        style: GoogleFonts.nunito(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.secondaryDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onDelete,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.delete_outline,
-                    size: 20,
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-            ],
+          subtitle: Text(
+            selectedCount == 0
+                ? '${category.services.length} servicios'
+                : '$selectedCount seleccionado${selectedCount == 1 ? "" : "s"}',
+            style: GoogleFonts.nunito(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selectedCount > 0
+                  ? AppColors.primaryDark
+                  : AppColors.textSecondary,
+            ),
           ),
-        ],
+          children: category.services.map((s) {
+            return CheckboxListTile(
+              value: isSelected(s.id),
+              onChanged: (v) => onToggle(s.id, v ?? false),
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              activeColor: AppColors.primary,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+              ),
+              title: Text(
+                s.name,
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.secondaryDark,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -772,37 +1011,74 @@ class _ServiceCard extends StatelessWidget {
 // 3. CoverageZoneScreen
 // ============================================================================
 
-class CoverageZoneScreen extends StatelessWidget {
+class CoverageZoneScreen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
 
   const CoverageZoneScreen({super.key, this.profileData});
 
   @override
+  State<CoverageZoneScreen> createState() => _CoverageZoneScreenState();
+}
+
+class _CoverageZoneScreenState extends State<CoverageZoneScreen> {
+  final DistrictService _districtService = DistrictService();
+  final AuthService _auth = AuthService();
+
+  List<District> _districts = const [];
+  int? _selectedId;
+  bool _loading = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final technician = widget.profileData?['technician'];
+    _selectedId = technician is Map ? technician['district_id'] as int? : null;
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list = await _districtService.getActiveDistricts();
+    if (!mounted) return;
+    setState(() {
+      _districts = list;
+      _loading = false;
+    });
+  }
+
+  Future<void> _select(District d) async {
+    if (_saving) return;
+    setState(() {
+      _selectedId = d.id;
+      _saving = true;
+    });
+    final res = await _auth.updateTechnicianProfile(districtId: d.id);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    showAppToast(
+      context,
+      message: res.success
+          ? 'Zona de cobertura: ${d.name}.'
+          : (res.message ?? 'No se pudo guardar.'),
+      type: res.success ? ToastType.success : ToastType.error,
+    );
+    if (res.success) {
+      final fresh = await _auth.getMyTechnicianProfile();
+      AuthStore.instance.setAuthenticated(fresh);
+    }
+  }
+
+  String get _currentName {
+    for (final d in _districts) {
+      if (d.id == _selectedId) return d.name;
+    }
+    final t = widget.profileData?['technician'];
+    if (t is Map && t['district'] != null) return t['district'].toString();
+    return 'Sin asignar';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic> technician =
-        profileData?['technician'] as Map<String, dynamic>? ?? {};
-    final String district =
-        technician['district'] as String? ??
-        profileData?['district'] as String? ??
-        'Provincia de Trujillo';
-    final List<String> districts = [
-      'Trujillo',
-      'La Esperanza',
-      'El Porvenir',
-      'Víctor Larco',
-      'Huanchaco',
-      'Laredo',
-    ];
-
-    final List<String> availableZones = [
-      'La Libertad',
-      'Lima',
-      'Arequipa',
-      'Cusco',
-      'Piura',
-      'Lambayeque',
-    ];
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -812,180 +1088,130 @@ class CoverageZoneScreen extends StatelessWidget {
             const _PanelAppBar(title: 'Mi zona de cobertura'),
             const _GradientDivider(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.screenPaddingH,
-                  vertical: AppSpacing.xl,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Este es el listado de las zonas donde podrás brindar tus servicios. Recordá que solo recibirás pedidos en las zonas mencionadas.',
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    // Current zone card
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryDark,
-                        borderRadius: BorderRadius.circular(20),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.screenPaddingH,
+                        vertical: AppSpacing.xl,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            district,
-                            style: GoogleFonts.nunito(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            districts.join(', '),
+                            'Elegí tu distrito dentro de la Provincia de Trujillo. '
+                            'Solo recibirás pedidos cercanos a esa zona.',
                             style: GoogleFonts.nunito(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Colors.white.withValues(alpha: 0.7),
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  showAppToast(
-                                    context,
-                                    message: 'Disponible pronto',
-                                    type: ToastType.info,
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                    ),
-                                    borderRadius: BorderRadius.circular(
-                                      AppSpacing.radiusFull,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.edit_outlined,
-                                        size: 16,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Editar ciudades',
-                                        style: GoogleFonts.nunito(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
+                          const SizedBox(height: AppSpacing.xl),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryDark,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Zona actual',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white.withValues(alpha: 0.6),
                                   ),
                                 ),
-                              ),
-                              const Spacer(),
-                              GestureDetector(
-                                onTap: () {
-                                  showAppToast(
-                                    context,
-                                    message: 'Disponible pronto',
-                                    type: ToastType.info,
-                                  );
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
+                                const SizedBox(height: 4),
+                                Text(
+                                  _currentName,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
                                   ),
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Provincia de Trujillo - Perú',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
                                     color: Colors.white.withValues(alpha: 0.7),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(height: AppSpacing.xxl),
+                          Text(
+                            'Seleccioná tu distrito',
+                            style: GoogleFonts.nunito(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.secondaryDark,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: AppSpacing.sm,
+                                  mainAxisSpacing: AppSpacing.sm,
+                                  childAspectRatio: 2.8,
+                                ),
+                            itemCount: _districts.length,
+                            itemBuilder: (context, index) {
+                              final d = _districts[index];
+                              final selected = d.id == _selectedId;
+                              return GestureDetector(
+                                onTap: () => _select(d),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? AppColors.primary
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: selected
+                                          ? AppColors.primary
+                                          : AppColors.neutral200,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  child: Text(
+                                    d.name,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.nunito(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: selected
+                                          ? Colors.white
+                                          : AppColors.secondaryDark,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.xxl),
                         ],
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    // Select zones section
-                    Text(
-                      'Seleccionar zonas',
-                      style: GoogleFonts.nunito(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.secondaryDark,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: AppSpacing.sm,
-                            mainAxisSpacing: AppSpacing.sm,
-                            childAspectRatio: 2.8,
-                          ),
-                      itemCount: availableZones.length,
-                      itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () {
-                            showAppToast(
-                              context,
-                              message: 'Disponible pronto',
-                              type: ToastType.info,
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.neutral200),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              availableZones[index],
-                              style: GoogleFonts.nunito(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.secondaryDark,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -1086,6 +1312,44 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   final TextEditingController _answer1Controller = TextEditingController();
   final TextEditingController _answer2Controller = TextEditingController();
   final TextEditingController _answer3Controller = TextEditingController();
+  final AuthService _auth = AuthService();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final technician = widget.profileData?['technician'];
+    final qa = technician is Map ? technician['qa'] : null;
+    if (qa is Map) {
+      _answer1Controller.text = qa['q1']?.toString() ?? '';
+      _answer2Controller.text = qa['q2']?.toString() ?? '';
+      _answer3Controller.text = qa['q3']?.toString() ?? '';
+    }
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final res = await _auth.updateTechnicianProfile(
+      qa: {
+        'q1': _answer1Controller.text.trim(),
+        'q2': _answer2Controller.text.trim(),
+        'q3': _answer3Controller.text.trim(),
+      },
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    showAppToast(
+      context,
+      message: res.success ? 'Respuestas guardadas.' : (res.message ?? 'No se pudo guardar.'),
+      type: res.success ? ToastType.success : ToastType.error,
+    );
+    if (res.success) {
+      final fresh = await _auth.getMyTechnicianProfile();
+      AuthStore.instance.setAuthenticated(fresh);
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
 
   @override
   void dispose() {
@@ -1155,14 +1419,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               ),
             ),
             _StickyBottomButton(
-              label: 'Guardar cambios',
-              onTap: () {
-                showAppToast(
-                  context,
-                  message: 'Disponible pronto',
-                  type: ToastType.info,
-                );
-              },
+              label: _saving ? 'Guardando...' : 'Guardar cambios',
+              onTap: _save,
             ),
           ],
         ),

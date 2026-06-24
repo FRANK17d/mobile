@@ -8,7 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
 import '../services/verification_service.dart';
 
-enum _DocumentSlot { dniFront, dniBack, selfie }
+enum _DocumentSlot { dniFront, dniBack, selfie, certificate }
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key, this.profileData});
@@ -28,7 +28,30 @@ class _IdentityVerificationScreenState
   String? _dniFrontPath;
   String? _dniBackPath;
   String? _selfiePath;
+  String? _certificatePath;
   bool _isSubmitting = false;
+
+  List<SubmittedDoc> _existingDocs = const [];
+  Map<String, String> _imgHeaders = const {};
+  bool _loadingExisting = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExisting();
+  }
+
+  /// Carga los documentos ya enviados (para que el técnico los vea al volver).
+  Future<void> _loadExisting() async {
+    final headers = await _service.authImageHeaders();
+    final docs = await _service.getMyDocuments();
+    if (!mounted) return;
+    setState(() {
+      _imgHeaders = headers;
+      _existingDocs = docs;
+      _loadingExisting = false;
+    });
+  }
 
   String get _status {
     final technician = widget.profileData?['technician'];
@@ -113,6 +136,8 @@ class _IdentityVerificationScreenState
           _dniBackPath = image.path;
         case _DocumentSlot.selfie:
           _selfiePath = image.path;
+        case _DocumentSlot.certificate:
+          _certificatePath = image.path;
       }
     });
   }
@@ -132,6 +157,7 @@ class _IdentityVerificationScreenState
       dniFrontPath: _dniFrontPath!,
       dniBackPath: _dniBackPath!,
       selfiePath: _selfiePath!,
+      certificatePath: _certificatePath,
     );
 
     if (!mounted) return;
@@ -164,7 +190,11 @@ class _IdentityVerificationScreenState
         ),
       ),
       body: SafeArea(
-        child: Column(
+        child: _loadingExisting
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              )
+            : Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
@@ -177,8 +207,18 @@ class _IdentityVerificationScreenState
                       rejectionReason: _rejectionReason,
                     ),
                     const SizedBox(height: 18),
+                    if (_existingDocs.isNotEmpty) ...[
+                      _SubmittedDocsSection(
+                        docs: _existingDocs,
+                        headers: _imgHeaders,
+                        urlForKey: _service.storageUrlForKey,
+                      ),
+                      const SizedBox(height: 22),
+                    ],
                     Text(
-                      'Documentos requeridos',
+                      _existingDocs.isEmpty
+                          ? 'Documentos requeridos'
+                          : 'Reenviar documentos',
                       style: GoogleFonts.nunito(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
@@ -217,6 +257,14 @@ class _IdentityVerificationScreenState
                           'Tu rostro debe verse completo y con buena luz.',
                       imagePath: _selfiePath,
                       onTap: () => _chooseSource(_DocumentSlot.selfie),
+                    ),
+                    const SizedBox(height: 12),
+                    _DocumentTile(
+                      title: 'Certificado de estudios',
+                      description:
+                          'Opcional — título, certificado de cursos o constancia de tu oficio.',
+                      imagePath: _certificatePath,
+                      onTap: () => _chooseSource(_DocumentSlot.certificate),
                     ),
                   ],
                 ),
@@ -473,6 +521,167 @@ class _SourceTile extends StatelessWidget {
         style: GoogleFonts.nunito(fontWeight: FontWeight.w800),
       ),
       onTap: onTap,
+    );
+  }
+}
+
+/// Sección "Documentos enviados": lo que el técnico ya mandó a revisión, con
+/// miniatura (cargada del bucket privado con header de autorización) y estado.
+class _SubmittedDocsSection extends StatelessWidget {
+  const _SubmittedDocsSection({
+    required this.docs,
+    required this.headers,
+    required this.urlForKey,
+  });
+
+  final List<SubmittedDoc> docs;
+  final Map<String, String> headers;
+  final String Function(String key) urlForKey;
+
+  static const _labels = {
+    'dni_front': 'DNI frontal',
+    'dni_back': 'DNI reverso',
+    'selfie': 'Selfie',
+    'certificate': 'Certificado de estudios',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Documentos enviados',
+          style: GoogleFonts.nunito(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Estos son los documentos que ya enviaste a revisión.',
+          style: GoogleFonts.nunito(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...docs.map(
+          (d) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _SubmittedDocRow(
+              status: d.status,
+              label: _labels[d.docType] ?? d.docType,
+              imageUrl: urlForKey(d.filePath),
+              headers: headers,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubmittedDocRow extends StatelessWidget {
+  const _SubmittedDocRow({
+    required this.status,
+    required this.label,
+    required this.imageUrl,
+    required this.headers,
+  });
+
+  final String status;
+  final String label;
+  final String imageUrl;
+  final Map<String, String> headers;
+
+  ({Color color, Color bg, String text}) get _statusStyle => switch (status) {
+    'verified' => (
+      color: AppColors.success,
+      bg: AppColors.successLight,
+      text: 'Verificado',
+    ),
+    'rejected' => (
+      color: AppColors.error,
+      bg: AppColors.errorLight,
+      text: 'Rechazado',
+    ),
+    _ => (
+      color: AppColors.warning,
+      bg: AppColors.warningLight,
+      text: 'En revisión',
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _statusStyle;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 56,
+              height: 56,
+              color: AppColors.neutral100,
+              child: Image.network(
+                imageUrl,
+                headers: headers,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.description_outlined,
+                  color: AppColors.neutral400,
+                ),
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.nunito(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: s.bg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              s.text,
+              style: GoogleFonts.nunito(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: s.color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

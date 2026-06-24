@@ -5,9 +5,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/constants/app_images.dart';
 import '../../../../core/services/app_preferences.dart';
+import '../../../../core/services/realtime_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../../../core/widgets/badges/notification_badge.dart';
 import '../../../auth/services/auth_service.dart';
+import '../../home/widgets/technician_menu_sheet.dart';
+import '../../notifications/screens/notifications_screen.dart';
+import '../../../profile/screens/update_profile_photo_screen.dart';
 import 'credits_screen.dart';
 import 'identity_verification_screen.dart';
 import 'panel_screens.dart';
@@ -58,12 +62,38 @@ class _ProviderAccountScreenState extends State<ProviderAccountScreen> {
   bool _showGuide = false;
   int _guideStep = 0;
   Map<String, dynamic>? _profileData;
+  final List<VoidCallback> _rtUnsub = [];
 
   @override
   void initState() {
     super.initState();
     _checkFirstTime();
     _loadProfile();
+    _setupRealtime();
+  }
+
+  /// Refresca el perfil EN VIVO cuando el admin verifica/rechaza al técnico
+  /// (el evento llega por el canal realtime de notificaciones), sin tener que
+  /// salir y volver a entrar a la app.
+  Future<void> _setupRealtime() async {
+    final rt = RealtimeService.instance;
+    await rt.connect();
+    _rtUnsub.add(
+      rt.on('notification', (payload) {
+        final type = payload['type'] as String?;
+        if (type == 'technician_verified' || type == 'verification_rejected') {
+          if (mounted) _loadProfile();
+        }
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final off in _rtUnsub) {
+      off();
+    }
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -74,6 +104,17 @@ class _ProviderAccountScreenState extends State<ProviderAccountScreen> {
         _profileData = profile;
       });
     }
+  }
+
+  /// Abre la pantalla para subir/cambiar la foto de perfil del técnico
+  /// (reusa el flujo del cliente) y recarga al volver con éxito.
+  Future<void> _openPhotoEditor() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => UpdateProfilePhotoScreen(profile: _profileData),
+      ),
+    );
+    if (changed == true) _loadProfile();
   }
 
   Future<void> _checkFirstTime() async {
@@ -106,6 +147,7 @@ class _ProviderAccountScreenState extends State<ProviderAccountScreen> {
           _AccountContent(
             profileData: _profileData,
             onVerificationSubmitted: _loadProfile,
+            onEditPhoto: _openPhotoEditor,
           ),
 
           // ── Overlay de guía (primera vez) ──
@@ -128,10 +170,12 @@ class _AccountContent extends StatelessWidget {
   const _AccountContent({
     this.profileData,
     required this.onVerificationSubmitted,
+    required this.onEditPhoto,
   });
 
   final Map<String, dynamic>? profileData;
   final Future<void> Function() onVerificationSubmitted;
+  final VoidCallback onEditPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +187,11 @@ class _AccountContent extends StatelessWidget {
         child: Column(
           children: [
             // ── Header con gradient ──
-            _ProfileHeader(topPadding: topPadding, profileData: profileData),
+            _ProfileHeader(
+              topPadding: topPadding,
+              profileData: profileData,
+              onEditPhoto: onEditPhoto,
+            ),
 
             // ── Cards de verificación ──
             _VerificationCards(
@@ -193,10 +241,15 @@ class _AccountContent extends StatelessWidget {
 // HEADER CON GRADIENT
 // ═══════════════════════════════════════════════════════════
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.topPadding, this.profileData});
+  const _ProfileHeader({
+    required this.topPadding,
+    this.profileData,
+    required this.onEditPhoto,
+  });
 
   final double topPadding;
   final Map<String, dynamic>? profileData;
+  final VoidCallback onEditPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -222,9 +275,25 @@ class _ProfileHeader extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                _HeaderIcon(icon: Icons.notifications_outlined),
+                NotificationBadge(
+                  child: _HeaderIcon(
+                    icon: Icons.notifications_outlined,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            NotificationsScreen(profileData: profileData),
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 16),
-                _HeaderIcon(icon: Icons.menu_rounded),
+                _HeaderIcon(
+                  icon: Icons.menu_rounded,
+                  onTap: () => showTechnicianMenuSheet(
+                    context,
+                    profileData: profileData,
+                  ),
+                ),
               ],
             ),
           ),
@@ -236,7 +305,10 @@ class _ProfileHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _AvatarWithCamera(profileData: profileData),
+              _AvatarWithCamera(
+                profileData: profileData,
+                onEditPhoto: onEditPhoto,
+              ),
               const SizedBox(width: 22),
               _CreditsPill(credits: credits),
             ],
@@ -292,13 +364,18 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _AvatarWithCamera extends StatelessWidget {
-  const _AvatarWithCamera({this.profileData});
+  const _AvatarWithCamera({this.profileData, required this.onEditPhoto});
 
   final Map<String, dynamic>? profileData;
+  final VoidCallback onEditPhoto;
 
   @override
   Widget build(BuildContext context) {
+    final technician = profileData?['technician'];
+    final isVerified =
+        technician is Map && technician['verification_status'] == 'verified';
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         Container(
           width: 120,
@@ -337,26 +414,46 @@ class _AvatarWithCamera extends StatelessWidget {
         Positioned(
           bottom: 4,
           right: 4,
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.camera_alt_rounded,
-              size: 18,
-              color: Color(0xFF3A3F4B),
+          child: GestureDetector(
+            onTap: onEditPhoto,
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                size: 18,
+                color: Color(0xFF3A3F4B),
+              ),
             ),
           ),
         ),
+        if (isVerified)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.verified_rounded,
+                color: Color(0xFF2563EB),
+                size: 24,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -411,20 +508,25 @@ class _CreditsPill extends StatelessWidget {
 }
 
 class _HeaderIcon extends StatelessWidget {
-  const _HeaderIcon({required this.icon});
+  const _HeaderIcon({required this.icon, this.onTap});
 
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.25),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.25),
+        ),
+        child: Icon(icon, color: Colors.white, size: 22),
       ),
-      child: Icon(icon, color: Colors.white, size: 22),
     );
   }
 }
@@ -521,7 +623,7 @@ class _VerificationCards extends StatelessWidget {
               iconColor: const Color(0xFFE65100),
               title: 'Verificá tu identidad',
               description:
-                  'Sube tu DNI y una selfie para mantener segura la comunidad.',
+                  'Necesaria para poder postular a pedidos. Sube tu DNI y una selfie.',
               onTap: () => _openVerification(context),
             ),
           },
@@ -658,11 +760,10 @@ class _ActionButtons extends StatelessWidget {
       case _AccountMenuAction.shareProfile:
         _openShareCard(context);
       case _AccountMenuAction.settings:
-        showAppToast(
+        showTechnicianMenuSheet(
           context,
-          message: 'Ajustes del perfil disponibles pronto',
-          type: ToastType.info,
-          icon: Icons.settings_rounded,
+          profileData: profileData,
+          initialSettings: true,
         );
     }
   }
