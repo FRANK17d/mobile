@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_images.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../services/credit_service.dart';
+import '../services/payment_checkout_service.dart';
 
 class CreditsScreen extends StatefulWidget {
   const CreditsScreen({super.key});
@@ -18,31 +20,11 @@ class _CreditsScreenState extends State<CreditsScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   final CreditService _creditService = CreditService();
+  final PaymentCheckoutService _paymentService = PaymentCheckoutService();
 
-  static const _fallbackPackages = [
-    _CreditPackage(
-      credits: 10,
-      price: 'S/ 15.00',
-      asset: AppImages.coinPackSmall,
-    ),
-    _CreditPackage(
-      credits: 20,
-      price: 'S/ 25.00',
-      oldPrice: 'S/ 30.00',
-      discount: '17% de descuento',
-      asset: AppImages.coinPackMedium,
-    ),
-    _CreditPackage(
-      credits: 40,
-      price: 'S/ 40.00',
-      oldPrice: 'S/ 60.00',
-      discount: '33% de descuento',
-      asset: AppImages.coinPackLarge,
-    ),
-  ];
-
-  List<_CreditPackage> _packages = _fallbackPackages;
+  List<_CreditPackage> _packages = const [];
   bool _isLoadingPackages = true;
+  int? _startingPackageId;
 
   @override
   void initState() {
@@ -60,10 +42,11 @@ class _CreditsScreenState extends State<CreditsScreen>
 
     setState(() {
       _packages = packages == null
-          ? _fallbackPackages
+          ? const []
           : List.generate(packages.length, (index) {
               final pack = packages[index];
               return _CreditPackage(
+                id: pack.id,
                 credits: pack.credits,
                 price: 'S/ ${pack.pricePen.toStringAsFixed(2)}',
                 asset: _assetForIndex(index),
@@ -79,6 +62,56 @@ class _CreditsScreenState extends State<CreditsScreen>
       1 => AppImages.coinPackMedium,
       _ => AppImages.coinPackLarge,
     };
+  }
+
+  Future<void> _startCheckout(_CreditPackage package) async {
+    if (_startingPackageId != null) return;
+
+    if (package.id <= 0) {
+      _showCheckoutMessage(
+        'No se pudo identificar este paquete. Intentalo de nuevo.',
+      );
+      return;
+    }
+
+    setState(() => _startingPackageId = package.id);
+
+    try {
+      final checkout = await _paymentService.createCreditsCheckout(package.id);
+      if (!mounted) return;
+
+      if (checkout == null) {
+        _showCheckoutMessage(
+          'No se pudo iniciar Mercado Pago. Intentalo de nuevo.',
+        );
+        return;
+      }
+
+      final launched = await launchUrl(
+        Uri.parse(checkout.checkoutUrl),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        _showCheckoutMessage(
+          'No se pudo abrir Mercado Pago en este dispositivo.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showCheckoutMessage(
+          'No se pudo abrir Mercado Pago. Intentalo de nuevo.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _startingPackageId = null);
+    }
+  }
+
+  void _showCheckoutMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -168,7 +201,9 @@ class _CreditsScreenState extends State<CreditsScreen>
                         ],
                       ),
                     ),
-                    if (_packages.isEmpty) ...[
+                    if (_isLoadingPackages) ...[
+                      const SizedBox(height: AppSpacing.xxl),
+                    ] else if (_packages.isEmpty) ...[
                       const SizedBox(height: AppSpacing.lg),
                       _AnimatedIn(
                         controller: _controller,
@@ -207,7 +242,12 @@ class _CreditsScreenState extends State<CreditsScreen>
                             begin: 0.2 + (index * 0.08),
                             end: 0.72 + (index * 0.06),
                             offset: const Offset(0, 0.22),
-                            child: _CreditPackageCard(package: pack),
+                            child: _CreditPackageCard(
+                              package: pack,
+                              isBusy: _startingPackageId == pack.id,
+                              isDisabled: _startingPackageId != null,
+                              onTap: () => _startCheckout(pack),
+                            ),
                           ),
                         );
                       }),
@@ -339,126 +379,168 @@ class _CloseButton extends StatelessWidget {
 }
 
 class _CreditPackageCard extends StatelessWidget {
-  const _CreditPackageCard({required this.package});
+  const _CreditPackageCard({
+    required this.package,
+    required this.onTap,
+    required this.isBusy,
+    required this.isDisabled,
+  });
 
   final _CreditPackage package;
+  final VoidCallback onTap;
+  final bool isBusy;
+  final bool isDisabled;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 104),
-          padding: const EdgeInsets.fromLTRB(26, 18, 20, 18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
-            border: Border.all(color: AppColors.borderLight),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.secondary.withValues(alpha: 0.1),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Row(
+    return Semantics(
+      button: true,
+      label: 'Comprar ${package.credits} creditos',
+      child: GestureDetector(
+        onTap: isDisabled ? null : onTap,
+        child: AnimatedOpacity(
+          opacity: isDisabled && !isBusy ? 0.62 : 1,
+          duration: const Duration(milliseconds: 160),
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Image.asset(
-                package.asset,
-                width: 92,
-                height: 74,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(width: 18),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 104),
+                padding: const EdgeInsets.fromLTRB(26, 18, 20, 18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.secondary.withValues(alpha: 0.1),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Row(
                   children: [
-                    RichText(
-                      text: TextSpan(
+                    Image.asset(
+                      package.asset,
+                      width: 92,
+                      height: 74,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          TextSpan(
-                            text: '${package.credits}',
-                            style: AppTypography.displaySmall.copyWith(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.gradientEnd,
+                          RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${package.credits}',
+                                  style: AppTypography.displaySmall.copyWith(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.gradientEnd,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' créditos',
+                                  style: AppTypography.headingLarge.copyWith(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          TextSpan(
-                            text: ' créditos',
-                            style: AppTypography.headingLarge.copyWith(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textTertiary,
-                            ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  package.price,
+                                  style: AppTypography.headingLarge.copyWith(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.secondaryDark,
+                                  ),
+                                ),
+                              ),
+                              if (package.oldPrice != null) ...[
+                                const SizedBox(width: 10),
+                                Text(
+                                  package.oldPrice!,
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    color: AppColors.textTertiary,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationThickness: 1.6,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            package.price,
-                            style: AppTypography.headingLarge.copyWith(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.secondaryDark,
-                            ),
-                          ),
+                    const SizedBox(width: 10),
+                    if (isBusy)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
                         ),
-                        if (package.oldPrice != null) ...[
-                          const SizedBox(width: 10),
-                          Text(
-                            package.oldPrice!,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textTertiary,
-                              decoration: TextDecoration.lineThrough,
-                              decorationThickness: 1.6,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                      )
+                    else
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary,
+                        size: 26,
+                      ),
                   ],
                 ),
               ),
+              if (package.discount != null)
+                Positioned(
+                  top: -16,
+                  right: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF009688),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF009688,
+                          ).withValues(alpha: 0.28),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      package.discount!,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
-        if (package.discount != null)
-          Positioned(
-            top: -16,
-            right: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-              decoration: BoxDecoration(
-                color: const Color(0xFF009688),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF009688).withValues(alpha: 0.28),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Text(
-                package.discount!,
-                style: AppTypography.titleMedium.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -651,6 +733,7 @@ class _AnimatedIn extends StatelessWidget {
 
 class _CreditPackage {
   const _CreditPackage({
+    required this.id,
     required this.credits,
     required this.price,
     required this.asset,
@@ -658,6 +741,7 @@ class _CreditPackage {
     this.discount,
   });
 
+  final int id;
   final int credits;
   final String price;
   final String asset;

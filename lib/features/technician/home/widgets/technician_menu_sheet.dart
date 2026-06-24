@@ -17,6 +17,7 @@ import '../../../profile/screens/update_profile_photo_screen.dart';
 import '../../account/screens/credits_screen.dart';
 import '../../account/screens/panel_screens.dart';
 import '../../account/screens/toke_pro_screen.dart';
+import '../../orders/screens/technician_requests_list_screen.dart';
 
 /// Abre el menú del técnico autenticado como vista full-screen.
 /// Si [initialSettings] es true, arranca directamente en el sub-menú "Ajustes".
@@ -80,6 +81,16 @@ class _TechnicianMenuFullScreenState extends State<_TechnicianMenuFullScreen> {
   void _goTab(int tab) {
     _close();
     TechnicianShell.goToTab(tab);
+  }
+
+  void _openAllOrders() {
+    Navigator.of(context, rootNavigator: true).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => const TechnicianRequestsListScreen(
+          initialScope: TechnicianRequestsScope.all,
+        ),
+      ),
+    );
   }
 
   void _share() {
@@ -257,7 +268,7 @@ class _TechnicianMenuFullScreenState extends State<_TechnicianMenuFullScreen> {
               _TechMenuTile(
                 icon: Icons.list_alt_rounded,
                 label: 'Mis pedidos',
-                onTap: () => _goTab(TechnicianShell.tabOrders),
+                onTap: _openAllOrders,
               ),
               _TechMenuTile(
                 icon: Icons.settings_outlined,

@@ -11,15 +11,47 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
+import '../services/work_posts_service.dart';
 
-class TechnicianPublicPreviewScreen extends StatelessWidget {
+class TechnicianPublicPreviewScreen extends StatefulWidget {
   const TechnicianPublicPreviewScreen({super.key, this.profileData});
 
   final Map<String, dynamic>? profileData;
 
   @override
+  State<TechnicianPublicPreviewScreen> createState() =>
+      _TechnicianPublicPreviewScreenState();
+}
+
+class _TechnicianPublicPreviewScreenState
+    extends State<TechnicianPublicPreviewScreen> {
+  final WorkPostsService _workPostsService = WorkPostsService();
+  List<TechnicianWorkPost> _workPosts = const [];
+  bool _loadingWorkPosts = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = _TechnicianProfileViewData.from(widget.profileData);
+    if (data.technicianId.isEmpty) {
+      _loadingWorkPosts = false;
+    } else {
+      _loadWorkPosts(data.technicianId);
+    }
+  }
+
+  Future<void> _loadWorkPosts(String technicianId) async {
+    final posts = await _workPostsService.getPublicPosts(technicianId);
+    if (!mounted) return;
+    setState(() {
+      _workPosts = posts;
+      _loadingWorkPosts = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = _TechnicianProfileViewData.from(profileData);
+    final data = _TechnicianProfileViewData.from(widget.profileData);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -29,7 +61,11 @@ class TechnicianPublicPreviewScreen extends StatelessWidget {
           child: Column(
             children: [
               _PublicProfileHero(data: data),
-              _PublicProfileDetails(data: data),
+              _PublicProfileDetails(
+                data: data,
+                workPosts: _workPosts,
+                loadingWorkPosts: _loadingWorkPosts,
+              ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 80),
@@ -225,9 +261,15 @@ class _PublicProfileHero extends StatelessWidget {
 }
 
 class _PublicProfileDetails extends StatelessWidget {
-  const _PublicProfileDetails({required this.data});
+  const _PublicProfileDetails({
+    required this.data,
+    required this.workPosts,
+    required this.loadingWorkPosts,
+  });
 
   final _TechnicianProfileViewData data;
+  final List<TechnicianWorkPost> workPosts;
+  final bool loadingWorkPosts;
 
   @override
   Widget build(BuildContext context) {
@@ -263,6 +305,17 @@ class _PublicProfileDetails extends StatelessWidget {
               child: _PreviewServiceRow(service: service),
             ),
           ),
+          if (loadingWorkPosts || workPosts.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const Divider(color: AppColors.border, height: 1),
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionTitle('Trabajos publicados'),
+            const SizedBox(height: AppSpacing.md),
+            _PublicWorkPostsSection(
+              posts: workPosts,
+              loading: loadingWorkPosts,
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           const Divider(color: AppColors.border, height: 1),
           const SizedBox(height: AppSpacing.xxl),
@@ -698,6 +751,118 @@ class _PreviewServiceRow extends StatelessWidget {
   }
 }
 
+class _PublicWorkPostsSection extends StatelessWidget {
+  const _PublicWorkPostsSection({required this.posts, required this.loading});
+
+  final List<TechnicianWorkPost> posts;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const SizedBox(
+        height: 146,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+      );
+    }
+
+    return SizedBox(
+      height: 168,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemBuilder: (context, index) =>
+            _PublicWorkPostCard(post: posts[index]),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+        itemCount: posts.length,
+      ),
+    );
+  }
+}
+
+class _PublicWorkPostCard extends StatelessWidget {
+  const _PublicWorkPostCard({required this.post});
+
+  final TechnicianWorkPost post;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = post.imageUrls.isNotEmpty ? post.imageUrls.first : null;
+    return Container(
+      width: 210,
+      decoration: BoxDecoration(
+        color: AppColors.secondaryLight,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.secondary.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (imageUrl != null)
+            CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              errorWidget: (context, url, error) => const _WorkPostFallback(),
+            )
+          else
+            const _WorkPostFallback(),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  AppColors.secondaryDark.withValues(alpha: 0.74),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 14,
+            child: Text(
+              post.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.titleMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                height: 1.15,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkPostFallback extends StatelessWidget {
+  const _WorkPostFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: AppColors.secondaryLight,
+      child: Center(
+        child: Icon(Icons.image_outlined, color: Colors.white70, size: 42),
+      ),
+    );
+  }
+}
+
 class _ShareServiceChip extends StatelessWidget {
   const _ShareServiceChip(this.service);
 
@@ -981,6 +1146,7 @@ void _pushAccountDetailScreen(BuildContext context, Widget screen) {
 class _TechnicianProfileViewData {
   const _TechnicianProfileViewData({
     required this.rawProfileData,
+    required this.technicianId,
     required this.firstName,
     required this.fullName,
     required this.bio,
@@ -993,6 +1159,7 @@ class _TechnicianProfileViewData {
   });
 
   final Map<String, dynamic>? rawProfileData;
+  final String technicianId;
   final String firstName;
   final String fullName;
   final String bio;
@@ -1048,6 +1215,10 @@ class _TechnicianProfileViewData {
 
     return _TechnicianProfileViewData(
       rawProfileData: profileData,
+      technicianId: _firstString(
+        [profileData, technician],
+        ['id', 'technician_id', 'technicianId', 'profile_id'],
+      ),
       joinedLabel: _joinedLabel(joinedAt),
       isVerified: status == 'verified',
       firstName: firstName.isEmpty ? 'Técnico' : firstName,

@@ -15,6 +15,8 @@ import '../../../profile/screens/update_profile_photo_screen.dart';
 import 'credits_screen.dart';
 import 'identity_verification_screen.dart';
 import 'panel_screens.dart';
+import '../services/account_stats_service.dart';
+import '../services/services_catalog_service.dart';
 import 'technician_profile_preview_screen.dart';
 import 'toke_pro_screen.dart';
 
@@ -222,12 +224,12 @@ class _AccountContent extends StatelessWidget {
             const SizedBox(height: 28),
 
             // ── Mis servicios ──
-            const _MisServicios(),
+            _MisServicios(profileData: profileData),
 
             const SizedBox(height: 28),
 
             // ── Datos generales ──
-            const _DatosGenerales(),
+            _DatosGenerales(profileData: profileData),
 
             const SizedBox(height: 120),
           ],
@@ -926,6 +928,41 @@ class _PanelProfesional extends StatelessWidget {
 
   final Map<String, dynamic>? profileData;
 
+  Map<String, dynamic> get _technician =>
+      profileData?['technician'] as Map<String, dynamic>? ?? {};
+
+  bool get _needsProfileInfo {
+    if (profileData == null) return false;
+    final first = profileData?['first_name']?.toString().trim() ?? '';
+    final last = profileData?['last_name']?.toString().trim() ?? '';
+    final bio = _technician['bio']?.toString().trim() ?? '';
+    return first.isEmpty || last.isEmpty || bio.isEmpty;
+  }
+
+  bool get _needsServices {
+    if (profileData == null) return false;
+    final categories = _technician['categories'];
+    return categories is! List || categories.isEmpty;
+  }
+
+  bool get _needsZone {
+    if (profileData == null) return false;
+    final district = _technician['district']?.toString().trim() ?? '';
+    final districtId = _technician['district_id'];
+    return district.isEmpty && districtId == null;
+  }
+
+  bool get _needsQuestions {
+    if (profileData == null) return false;
+    final qa = _technician['qa'];
+    if (qa is! Map) return true;
+    return [
+      'q1',
+      'q2',
+      'q3',
+    ].any((key) => qa[key]?.toString().trim().isEmpty ?? true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -955,7 +992,7 @@ class _PanelProfesional extends StatelessWidget {
           _PanelItem(
             emoji: 'ℹ️',
             label: 'Editar mi información',
-            trailing: _AttentionBadge(),
+            trailing: _needsProfileInfo ? _AttentionBadge() : null,
             onTap: () => _pushAccountDetailScreen(
               context,
               EditProfileScreen(profileData: profileData),
@@ -964,6 +1001,7 @@ class _PanelProfesional extends StatelessWidget {
           _PanelItem(
             emoji: '🧰',
             label: 'Servicios y habilidades',
+            trailing: _needsServices ? _AttentionBadge() : null,
             onTap: () => _pushAccountDetailScreen(
               context,
               ServicesScreen(profileData: profileData),
@@ -972,6 +1010,7 @@ class _PanelProfesional extends StatelessWidget {
           _PanelItem(
             emoji: '📍',
             label: 'Zona de cobertura',
+            trailing: _needsZone ? _AttentionBadge() : null,
             onTap: () => _pushAccountDetailScreen(
               context,
               CoverageZoneScreen(profileData: profileData),
@@ -988,6 +1027,7 @@ class _PanelProfesional extends StatelessWidget {
           _PanelItem(
             emoji: '❓',
             label: 'Preguntas y respuestas',
+            trailing: _needsQuestions ? _AttentionBadge() : null,
             onTap: () => _pushAccountDetailScreen(
               context,
               QuestionsScreen(profileData: profileData),
@@ -1422,8 +1462,75 @@ class _BenefitItem extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 // MIS SERVICIOS
 // ═══════════════════════════════════════════════════════════
-class _MisServicios extends StatelessWidget {
-  const _MisServicios();
+class _MisServicios extends StatefulWidget {
+  const _MisServicios({this.profileData});
+
+  final Map<String, dynamic>? profileData;
+
+  @override
+  State<_MisServicios> createState() => _MisServiciosState();
+}
+
+class _MisServiciosState extends State<_MisServicios> {
+  final ServicesCatalogService _service = ServicesCatalogService();
+
+  List<ServiceCatalogCategory> _categories = const [];
+  bool _loading = true;
+  int _loadVersion = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MisServicios oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profileData != widget.profileData) {
+      setState(() => _loading = true);
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    final version = ++_loadVersion;
+    final catalog = await _service.getCatalog();
+    final allowed = _allowedCategoryIds();
+    if (!mounted || version != _loadVersion) return;
+    setState(() {
+      _categories = catalog.where((c) => allowed.contains(c.id)).toList();
+      _loading = false;
+    });
+  }
+
+  Set<int> _allowedCategoryIds() {
+    final technician = widget.profileData?['technician'];
+    final raw = technician is Map ? technician['categories'] : null;
+    if (raw is! List) return const {};
+    return raw
+        .map((item) {
+          if (item is Map) return (item['id'] as num?)?.toInt();
+          if (item is num) return item.toInt();
+          return int.tryParse(item.toString());
+        })
+        .whereType<int>()
+        .toSet();
+  }
+
+  Future<void> _openServices({int? categoryId}) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ServicesScreen(
+          profileData: widget.profileData,
+          initialCategoryId: categoryId,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _loading = true);
+    await _load();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1432,47 +1539,96 @@ class _MisServicios extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Mis servicios',
-                style: GoogleFonts.nunito(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF1A1A1A),
+          child: GestureDetector(
+            onTap: () => _openServices(),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Mis servicios',
+                  style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1A1A1A),
+                  ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.neutral500,
-                size: 26,
-              ),
-            ],
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutral500,
+                  size: 26,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 14),
-        SizedBox(
-          height: 90,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
+        if (_loading)
+          const SizedBox(
+            height: 90,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_categories.isEmpty)
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: const [
-              _ServiceChip(
-                emoji: '🔧',
-                title: 'Plomero',
-                subtitle: 'Plomería en general.',
-              ),
-              SizedBox(width: 12),
-              _ServiceChip(
-                emoji: '🏗️',
-                title: 'Azulejista',
-                subtitle: 'Instalación de pisos.',
-              ),
-            ],
+            child: _EmptyServiceChip(onTap: () => _openServices()),
+          )
+        else
+          SizedBox(
+            height: 92,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final selected = category.services
+                    .where((s) => s.selected)
+                    .map((s) => s.name)
+                    .toList();
+                return _ServiceChip(
+                  emoji: category.emoji,
+                  title: category.name,
+                  subtitle: selected.isEmpty
+                      ? '${category.services.length} servicios para marcar'
+                      : selected.take(2).join(', '),
+                  onTap: () => _openServices(categoryId: category.id),
+                );
+              },
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemCount: _categories.length,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _EmptyServiceChip extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _EmptyServiceChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.neutral200),
+        ),
+        child: Text(
+          'Agrega tus categorías para elegir servicios específicos.',
+          style: GoogleFonts.nunito(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1482,53 +1638,58 @@ class _ServiceChip extends StatelessWidget {
     required this.emoji,
     required this.title,
     required this.subtitle,
+    required this.onTap,
   });
 
   final String emoji;
   final String title;
   final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 200,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.neutral200),
-      ),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 30)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A1A),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 205,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.neutral200),
+        ),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 30)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF1A1A1A),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.nunito(
-                    fontSize: 12,
-                    color: AppColors.neutral500,
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.nunito(
+                      fontSize: 12,
+                      color: AppColors.neutral500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1537,8 +1698,72 @@ class _ServiceChip extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 // DATOS GENERALES
 // ═══════════════════════════════════════════════════════════
-class _DatosGenerales extends StatelessWidget {
-  const _DatosGenerales();
+class _DatosGenerales extends StatefulWidget {
+  const _DatosGenerales({this.profileData});
+
+  final Map<String, dynamic>? profileData;
+
+  @override
+  State<_DatosGenerales> createState() => _DatosGeneralesState();
+}
+
+class _DatosGeneralesState extends State<_DatosGenerales> {
+  final TechnicianAccountStatsService _statsService =
+      TechnicianAccountStatsService();
+  TechnicianAccountStats _stats = const TechnicianAccountStats();
+  bool _loading = true;
+  int _loadVersion = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DatosGenerales oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profileData != widget.profileData) {
+      _loadStats();
+    }
+  }
+
+  Future<void> _loadStats() async {
+    final version = ++_loadVersion;
+    if (mounted && !_loading) setState(() => _loading = true);
+    final stats = await _statsService.getStats(profileData: widget.profileData);
+    if (!mounted || version != _loadVersion) return;
+    setState(() {
+      _stats = stats;
+      _loading = false;
+    });
+  }
+
+  String get _joinedLabel {
+    final raw = widget.profileData?['created_at']?.toString();
+    final createdAt = raw == null ? null : DateTime.tryParse(raw);
+    if (createdAt == null) return 'Miembro de Toke+';
+
+    final now = DateTime.now();
+    final days = now.difference(createdAt).inDays;
+    if (days <= 0) return 'Te uniste hoy a Toke+';
+    if (days == 1) return 'Te uniste hace 1 día a Toke+';
+    if (days < 30) return 'Te uniste hace $days días a Toke+';
+    final months = (days / 30).floor();
+    if (months == 1) return 'Te uniste hace 1 mes a Toke+';
+    if (months < 12) return 'Te uniste hace $months meses a Toke+';
+    final years = (days / 365).floor();
+    return years == 1
+        ? 'Te uniste hace 1 año a Toke+'
+        : 'Te uniste hace $years años a Toke+';
+  }
+
+  void _openFicha() {
+    _pushAccountDetailScreen(
+      context,
+      TechnicianFichaScreen(profileData: widget.profileData),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1547,68 +1772,102 @@ class _DatosGenerales extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Datos generales',
-                style: GoogleFonts.nunito(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF1A1A1A),
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.neutral500,
-                size: 26,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.neutral200),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          GestureDetector(
+            onTap: _openFicha,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.nunito(
-                      fontSize: 14,
-                      color: const Color(0xFF2E2E2E),
-                      height: 1.6,
-                    ),
-                    children: const [
-                      TextSpan(
-                        text: '0',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      TextSpan(text: ' Postulaciones hechas\n'),
-                      TextSpan(
-                        text: '0',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      TextSpan(text: ' Pedidos completados'),
-                    ],
+                Text(
+                  'Datos generales',
+                  style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF1A1A1A),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Te uniste hace un momento a Toke+',
-                  style: GoogleFonts.nunito(
-                    fontSize: 13,
-                    color: AppColors.neutral500,
-                  ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutral500,
+                  size: 26,
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: _openFicha,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.neutral200),
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      height: 52,
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _GeneralStatLine(
+                          value: _stats.participations,
+                          label: 'Postulaciones hechas',
+                        ),
+                        const SizedBox(height: 4),
+                        _GeneralStatLine(
+                          value: _stats.activeParticipations,
+                          label: 'Postulaciones activas',
+                        ),
+                        const SizedBox(height: 4),
+                        _GeneralStatLine(
+                          value: _stats.wonJobs,
+                          label: 'Pedidos completados',
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _joinedLabel,
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            color: AppColors.neutral500,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GeneralStatLine extends StatelessWidget {
+  const _GeneralStatLine({required this.value, required this.label});
+
+  final int value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: GoogleFonts.nunito(
+          fontSize: 14,
+          color: const Color(0xFF2E2E2E),
+          height: 1.35,
+        ),
+        children: [
+          TextSpan(
+            text: '$value',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          TextSpan(text: ' $label'),
         ],
       ),
     );

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_images.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../services/payment_checkout_service.dart';
 import '../services/toke_pro_service.dart';
 
 class TokeProScreen extends StatefulWidget {
@@ -18,6 +20,7 @@ class _TokeProScreenState extends State<TokeProScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   final TokeProService _tokeProService = TokeProService();
+  final PaymentCheckoutService _paymentService = PaymentCheckoutService();
   static const double _stickyPlansReservedHeight = 340;
 
   static const _benefits = [
@@ -59,25 +62,9 @@ class _TokeProScreenState extends State<TokeProScreen>
     ),
   ];
 
-  static const _fallbackPlans = [
-    _ProPlan(
-      title: 'Plan trimestral',
-      price: 'S/ 49.00',
-      period: '3 meses',
-      credits: 50,
-    ),
-    _ProPlan(
-      title: 'Plan anual',
-      price: 'S/ 159.00',
-      oldPrice: 'S/ 199.00',
-      period: '1 año',
-      credits: 200,
-      badge: '20% de descuento',
-    ),
-  ];
-
-  List<_ProPlan> _plans = _fallbackPlans;
+  List<_ProPlan> _plans = const [];
   bool _isLoadingPlans = true;
+  int? _startingPlanId;
 
   @override
   void initState() {
@@ -95,10 +82,11 @@ class _TokeProScreenState extends State<TokeProScreen>
 
     setState(() {
       _plans = plans == null
-          ? _fallbackPlans
+          ? const []
           : plans
                 .map(
                   (plan) => _ProPlan(
+                    id: plan.id,
                     title: plan.name,
                     price: 'S/ ${plan.pricePen.toStringAsFixed(2)}',
                     period: _durationLabel(plan.durationDays),
@@ -120,6 +108,56 @@ class _TokeProScreenState extends State<TokeProScreen>
       return '$months ${months == 1 ? 'mes' : 'meses'}';
     }
     return '$days días';
+  }
+
+  Future<void> _startCheckout(_ProPlan plan) async {
+    if (_startingPlanId != null) return;
+
+    if (plan.id <= 0) {
+      _showCheckoutMessage(
+        'No se pudo identificar este plan. Intentalo de nuevo.',
+      );
+      return;
+    }
+
+    setState(() => _startingPlanId = plan.id);
+
+    try {
+      final checkout = await _paymentService.createTokeProCheckout(plan.id);
+      if (!mounted) return;
+
+      if (checkout == null) {
+        _showCheckoutMessage(
+          'No se pudo iniciar Mercado Pago. Intentalo de nuevo.',
+        );
+        return;
+      }
+
+      final launched = await launchUrl(
+        Uri.parse(checkout.checkoutUrl),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && mounted) {
+        _showCheckoutMessage(
+          'No se pudo abrir Mercado Pago en este dispositivo.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showCheckoutMessage(
+          'No se pudo abrir Mercado Pago. Intentalo de nuevo.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _startingPlanId = null);
+    }
+  }
+
+  void _showCheckoutMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -203,6 +241,8 @@ class _TokeProScreenState extends State<TokeProScreen>
                 child: _StickyPlansPanel(
                   plans: _plans,
                   isLoading: _isLoadingPlans,
+                  startingPlanId: _startingPlanId,
+                  onPlanTap: _startCheckout,
                 ),
               ),
             ),
@@ -555,22 +595,41 @@ class _CreditBonusCallout extends StatelessWidget {
 }
 
 class _StickyPlansPanel extends StatelessWidget {
-  const _StickyPlansPanel({required this.plans, required this.isLoading});
+  const _StickyPlansPanel({
+    required this.plans,
+    required this.isLoading,
+    required this.startingPlanId,
+    required this.onPlanTap,
+  });
 
   final List<_ProPlan> plans;
   final bool isLoading;
+  final int? startingPlanId;
+  final ValueChanged<_ProPlan> onPlanTap;
 
   @override
   Widget build(BuildContext context) {
-    return _PlansPanel(plans: plans, isLoading: isLoading);
+    return _PlansPanel(
+      plans: plans,
+      isLoading: isLoading,
+      startingPlanId: startingPlanId,
+      onPlanTap: onPlanTap,
+    );
   }
 }
 
 class _PlansPanel extends StatelessWidget {
-  const _PlansPanel({required this.plans, required this.isLoading});
+  const _PlansPanel({
+    required this.plans,
+    required this.isLoading,
+    required this.startingPlanId,
+    required this.onPlanTap,
+  });
 
   final List<_ProPlan> plans;
   final bool isLoading;
+  final int? startingPlanId;
+  final ValueChanged<_ProPlan> onPlanTap;
 
   @override
   Widget build(BuildContext context) {
@@ -616,7 +675,12 @@ class _PlansPanel extends StatelessWidget {
                 padding: EdgeInsets.only(
                   bottom: index == plans.length - 1 ? 0 : AppSpacing.md,
                 ),
-                child: _PlanCard(plan: plans[index]),
+                child: _PlanCard(
+                  plan: plans[index],
+                  isBusy: startingPlanId == plans[index].id,
+                  isDisabled: startingPlanId != null,
+                  onTap: () => onPlanTap(plans[index]),
+                ),
               );
             }),
         ],
@@ -626,130 +690,166 @@ class _PlansPanel extends StatelessWidget {
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan});
+  const _PlanCard({
+    required this.plan,
+    required this.onTap,
+    required this.isBusy,
+    required this.isDisabled,
+  });
 
   final _ProPlan plan;
+  final VoidCallback onTap;
+  final bool isBusy;
+  final bool isDisabled;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 13, 14, 13),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.secondary.withValues(alpha: 0.07),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
+    return Semantics(
+      button: true,
+      label: 'Activar ${plan.title}',
+      child: GestureDetector(
+        onTap: isDisabled ? null : onTap,
+        child: AnimatedOpacity(
+          opacity: isDisabled && !isBusy ? 0.62 : 1,
+          duration: const Duration(milliseconds: 160),
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      plan.title,
-                      style: AppTypography.headingSmall.copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.xxs,
-                      children: [
-                        Text(
-                          plan.price,
-                          style: AppTypography.displaySmall.copyWith(
-                            fontSize: 23,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.secondaryDark,
-                            letterSpacing: -0.7,
-                          ),
-                        ),
-                        if (plan.oldPrice != null)
-                          Text(
-                            plan.oldPrice!,
-                            style: AppTypography.bodyMedium.copyWith(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textTertiary,
-                              decoration: TextDecoration.lineThrough,
-                              decorationThickness: 1.5,
-                            ),
-                          ),
-                        Text(
-                          '(${plan.period})',
-                          style: AppTypography.titleLarge.copyWith(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      '${plan.credits} créditos incluidos',
-                      style: AppTypography.labelLarge.copyWith(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryDark,
-                      ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 13, 14, 13),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.96),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.secondary.withValues(alpha: 0.07),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            plan.title,
+                            style: AppTypography.headingSmall.copyWith(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xxs),
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.xxs,
+                            children: [
+                              Text(
+                                plan.price,
+                                style: AppTypography.displaySmall.copyWith(
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.secondaryDark,
+                                  letterSpacing: -0.7,
+                                ),
+                              ),
+                              if (plan.oldPrice != null)
+                                Text(
+                                  plan.oldPrice!,
+                                  style: AppTypography.bodyMedium.copyWith(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textTertiary,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationThickness: 1.5,
+                                  ),
+                                ),
+                              Text(
+                                '(${plan.period})',
+                                style: AppTypography.titleLarge.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xxs),
+                          Text(
+                            '${plan.credits} créditos incluidos',
+                            style: AppTypography.labelLarge.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    if (isBusy)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary,
+                        size: 24,
+                      ),
+                  ],
+                ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
-                size: 24,
-              ),
+              if (plan.badge != null)
+                Positioned(
+                  top: -12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF009688),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusFull,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF009688,
+                          ).withValues(alpha: 0.24),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      plan.badge!,
+                      style: AppTypography.titleMedium.copyWith(
+                        fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
-        if (plan.badge != null)
-          Positioned(
-            top: -12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xFF009688),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF009688).withValues(alpha: 0.24),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Text(
-                plan.badge!,
-                style: AppTypography.titleMedium.copyWith(
-                  fontSize: 12,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -807,6 +907,7 @@ class _ProBenefit {
 
 class _ProPlan {
   const _ProPlan({
+    required this.id,
     required this.title,
     required this.price,
     required this.period,
@@ -815,6 +916,7 @@ class _ProPlan {
     this.badge,
   });
 
+  final int id;
   final String title;
   final String price;
   final String period;
