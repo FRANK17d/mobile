@@ -14,6 +14,7 @@ import '../../features/auth/screens/registration_otp_screen.dart';
 import '../../features/auth/screens/registration_success_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/auth_processing_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
 import '../../features/support/screens/ai_support_screen.dart';
 import '../navigation/client_shell.dart';
 import '../navigation/technician_shell.dart';
@@ -344,6 +345,29 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const AiSupportScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    ),
+
+    // ─── Ajustes ───
+    GoRoute(
+      path: AppRoutes.settings,
+      name: 'settings',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const SettingsScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)

@@ -4,6 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants/app_routes.dart';
+import '../core/services/theme_service.dart';
 import '../core/theme/app_theme.dart';
 import '../core/constants/app_strings.dart';
 import '../features/auth/services/auth_service.dart';
@@ -26,6 +27,7 @@ class _TokeAppState extends ConsumerState<TokeApp> {
   @override
   void initState() {
     super.initState();
+    ThemeService.instance.init();
     _initDeepLinks();
   }
 
@@ -96,16 +98,21 @@ class _TokeAppState extends ConsumerState<TokeApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: AppStrings.appName,
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.instance,
+      builder: (context, themeMode, _) {
+        return MaterialApp.router(
+          title: AppStrings.appName,
+          debugShowCheckedModeBanner: false,
 
-      // Tema
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.light, // TODO: Hacer configurable por el usuario
-      // Router
-      routerConfig: appRouter,
+          // Tema
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeMode,
+          // Router
+          routerConfig: appRouter,
+        );
+      },
     );
   }
 }

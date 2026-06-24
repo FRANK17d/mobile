@@ -14,6 +14,7 @@ import '../../../profile/screens/biometric_access_screen.dart';
 import '../../../profile/screens/change_password_screen.dart';
 import '../../../profile/screens/delete_account_screen.dart';
 import '../../../profile/screens/update_profile_photo_screen.dart';
+import '../../../settings/screens/settings_screen.dart';
 import '../../account/screens/credits_screen.dart';
 import '../../account/screens/panel_screens.dart';
 import '../../account/screens/toke_pro_screen.dart';
@@ -382,6 +383,11 @@ class _TechnicianMenuFullScreenState extends State<_TechnicianMenuFullScreen> {
           icon: Icons.key_outlined,
           label: 'Cambiar mi contraseña',
           onTap: () => _push(const ChangePasswordScreen()),
+        ),
+        _TechMenuTile(
+          icon: Icons.tune_rounded,
+          label: 'Más ajustes',
+          onTap: () => _push(const SettingsScreen()),
         ),
         _TechMenuTile(
           icon: Icons.sentiment_dissatisfied_outlined,

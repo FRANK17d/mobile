@@ -15,6 +15,7 @@ import '../../../profile/screens/change_password_screen.dart';
 import '../../../profile/screens/delete_account_screen.dart';
 import '../../../profile/screens/edit_client_profile_screen.dart';
 import '../../../profile/screens/update_profile_photo_screen.dart';
+import '../../../settings/screens/settings_screen.dart';
 import '../../orders/screens/my_requests_screen.dart';
 import '../../request_service/screens/request_service_wizard_screen.dart';
 
@@ -361,6 +362,11 @@ class _ClientMenuFullScreenState extends State<_ClientMenuFullScreen> {
           icon: Icons.key_outlined,
           label: 'Cambiar mi contraseña',
           onTap: () => _push(const ChangePasswordScreen()),
+        ),
+        _ClientMenuTile(
+          icon: Icons.tune_rounded,
+          label: 'Más ajustes',
+          onTap: () => _push(const SettingsScreen()),
         ),
         _ClientMenuTile(
           icon: Icons.sentiment_dissatisfied_outlined,
