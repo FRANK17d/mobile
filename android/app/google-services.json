@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "732952330715",
+    "project_id": "toke-c1bfc",
+    "storage_bucket": "toke-c1bfc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:732952330715:android:d9646b56e6572f725c67fe",
+        "android_client_info": {
+          "package_name": "com.tokeplus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqc3zVKBhMRlavpU1w4WA4ljdCbFIqon0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1413,7 +1413,7 @@ class _CategoryServicesTile extends StatelessWidget {
                 Switch.adaptive(
                   value: isCategoryActive,
                   onChanged: onCategoryToggle,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                 ),
               ],
             ),

@@ -737,9 +737,8 @@ class _CreditPackage {
     required this.credits,
     required this.price,
     required this.asset,
-    this.oldPrice,
-    this.discount,
-  });
+  }) : oldPrice = null,
+       discount = null;
 
   final int id;
   final int credits;

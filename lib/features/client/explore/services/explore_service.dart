@@ -47,7 +47,15 @@ class CategoryProvider {
               'description': serviceDescription,
             },
           ];
-    return {
+    final technician = <String, dynamic>{
+      'id': id,
+      'bio': bio,
+      'district_name': districtName,
+      'avg_rating': avgRating,
+      'total_jobs_completed': totalJobs,
+    };
+
+    final profile = <String, dynamic>{
       'id': id,
       'technician_id': id,
       'first_name': firstName,
@@ -55,19 +63,19 @@ class CategoryProvider {
       'avatar_url': avatarUrl,
       'district_name': districtName,
       'viewer_context': 'client',
-      if (verificationStatus != null) 'verification_status': verificationStatus,
-      if (services != null) 'services': services,
-      'technician': {
-        'id': id,
-        'bio': bio,
-        'district_name': districtName,
-        'avg_rating': avgRating,
-        'total_jobs_completed': totalJobs,
-        if (verificationStatus != null)
-          'verification_status': verificationStatus,
-        if (services != null) 'services': services,
-      },
+      'technician': technician,
     };
+
+    if (verificationStatus != null) {
+      profile['verification_status'] = verificationStatus;
+      technician['verification_status'] = verificationStatus;
+    }
+    if (services != null) {
+      profile['services'] = services;
+      technician['services'] = services;
+    }
+
+    return profile;
   }
 
   factory CategoryProvider.fromJson(Map<String, dynamic> j) => CategoryProvider(

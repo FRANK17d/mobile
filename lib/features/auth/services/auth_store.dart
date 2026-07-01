@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/services/realtime_service.dart';
 
 /// Snapshot inmutable del estado de sesión en memoria.
@@ -40,6 +41,8 @@ class AuthStore {
     // Abrir la conexión realtime (fire-and-forget) con el token actual.
     RealtimeService.instance.connect();
     NotificationService.instance.init();
+    // Registrar token FCM para push notifications.
+    PushNotificationService.instance.requestPermissionAndRegister();
   }
 
   /// Limpia el estado: usado al cerrar sesión o cuando no hay sesión activa.

@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: 'Recibir notificaciones',
                   trailing: Switch.adaptive(
                     value: _notificationsEnabled,
-                    activeColor: AppColors.primary,
+                    activeThumbColor: AppColors.primary,
                     onChanged: (value) async {
                       setState(() => _notificationsEnabled = value);
                       await AppPreferences.setReceivingOrders(value);
@@ -110,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: _biometricSupported
                       ? Switch.adaptive(
                           value: _biometricEnabled,
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                           onChanged: (value) => _toggleBiometric(value),
                         )
                       : const Icon(
@@ -431,7 +431,7 @@ class _SettingsTile extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),

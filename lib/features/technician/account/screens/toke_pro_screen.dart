@@ -912,9 +912,8 @@ class _ProPlan {
     required this.price,
     required this.period,
     required this.credits,
-    this.oldPrice,
-    this.badge,
-  });
+  }) : oldPrice = null,
+       badge = null;
 
   final int id;
   final String title;

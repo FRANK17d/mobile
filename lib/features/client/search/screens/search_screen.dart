@@ -259,7 +259,7 @@ class _ProvidersTab extends StatelessWidget {
         vertical: AppSpacing.md,
       ),
       itemCount: providers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
       itemBuilder: (context, index) {
         final provider = providers[index];
         return _ProviderCard(provider: provider);
@@ -416,7 +416,7 @@ class _RequestsTab extends StatelessWidget {
         vertical: AppSpacing.md,
       ),
       itemCount: requests.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
       itemBuilder: (context, index) {
         final request = requests[index];
         return _RequestCard(request: request);

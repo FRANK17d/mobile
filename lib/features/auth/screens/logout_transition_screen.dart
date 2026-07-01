@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_images.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../services/auth_service.dart';
@@ -76,6 +77,7 @@ class _LogoutTransitionScreenState extends State<LogoutTransitionScreen>
   }
 
   Future<void> _logout() async {
+    await PushNotificationService.instance.unregisterToken();
     await AuthService().logout();
     AuthStore.instance.setUnauthenticated();
   }

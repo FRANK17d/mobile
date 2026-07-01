@@ -123,7 +123,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         ),
                         sliver: SliverList.separated(
                           itemCount: _transactions.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(height: AppSpacing.xs),
                           itemBuilder: (context, index) {
                             return _TransactionCard(
