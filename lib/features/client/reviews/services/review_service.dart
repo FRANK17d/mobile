@@ -15,6 +15,13 @@ class TechnicianReview {
     this.requestTitle,
     this.categoryName,
     this.createdAt,
+    this.requestId,
+    this.requestDescription,
+    this.requestImageUrls = const <String>[],
+    this.requestOrderNumber,
+    this.requestCompletedAt,
+    this.categoryEmoji,
+    this.districtName,
   });
 
   final String id;
@@ -26,18 +33,47 @@ class TechnicianReview {
   final String? categoryName;
   final DateTime? createdAt;
 
-  factory TechnicianReview.fromJson(Map<String, dynamic> j) => TechnicianReview(
-    id: j['id'] as String,
-    rating: (j['rating'] as num).toInt(),
-    comment: j['comment'] as String?,
-    clientFirstName: j['client_first_name'] as String?,
-    clientAvatarUrl: j['client_avatar_url'] as String?,
-    requestTitle: j['request_title'] as String?,
-    categoryName: j['category_name'] as String?,
-    createdAt: j['created_at'] != null
-        ? DateTime.tryParse(j['created_at'] as String)
-        : null,
-  );
+  // Campos añadidos por migración 0040
+  final String? requestId;
+  final String? requestDescription;
+  final List<String> requestImageUrls;
+  final int? requestOrderNumber;
+  final DateTime? requestCompletedAt;
+  final String? categoryEmoji;
+  final String? districtName;
+
+  factory TechnicianReview.fromJson(Map<String, dynamic> j) {
+    // image_urls puede venir como List<String> o null
+    final rawImages = j['request_image_urls'];
+    final List<String> images;
+    if (rawImages is List) {
+      images = rawImages.whereType<String>().toList(growable: false);
+    } else {
+      images = const <String>[];
+    }
+
+    return TechnicianReview(
+      id: j['id'] as String,
+      rating: (j['rating'] as num).toInt(),
+      comment: j['comment'] as String?,
+      clientFirstName: j['client_first_name'] as String?,
+      clientAvatarUrl: j['client_avatar_url'] as String?,
+      requestTitle: j['request_title'] as String?,
+      categoryName: j['category_name'] as String?,
+      createdAt: j['created_at'] != null
+          ? DateTime.tryParse(j['created_at'] as String)
+          : null,
+      requestId: j['request_id'] as String?,
+      requestDescription: j['request_description'] as String?,
+      requestImageUrls: images,
+      requestOrderNumber: (j['request_order_number'] as num?)?.toInt(),
+      requestCompletedAt: j['request_completed_at'] != null
+          ? DateTime.tryParse(j['request_completed_at'] as String)
+          : null,
+      categoryEmoji: j['category_emoji'] as String?,
+      districtName: j['district_name'] as String?,
+    );
+  }
 }
 
 /// Mi reseña existente para un pedido (si ya fue calificado).

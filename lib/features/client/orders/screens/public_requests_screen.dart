@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../core/widgets/feedback/app_toast.dart';
 import '../../../auth/screens/account_prompt_screen.dart';
 import '../../../auth/services/auth_store.dart';
 import '../../explore/services/explore_service.dart';
+import 'public_request_detail_screen.dart';
 import '../../request_service/screens/request_service_wizard_screen.dart';
 
 /// Vista pública "Pedidos": explora los pedidos de otros clientes (sin sesión).
@@ -75,12 +75,12 @@ class _PublicRequestsScreenState extends State<PublicRequestsScreen> {
     }
   }
 
-  void _onCardTap() {
+  void _onCardTap(PublicRequest request) {
     if (_isAuthed) {
-      showAppToast(
-        context,
-        message: 'Pronto vas a poder ver más de este pedido.',
-        type: ToastType.info,
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PublicRequestDetailScreen(request: request),
+        ),
       );
     } else {
       _promptAccount();
@@ -269,7 +269,7 @@ class _PublicRequestsScreenState extends State<PublicRequestsScreen> {
                             const SizedBox(height: AppSpacing.md),
                         itemBuilder: (_, i) => _PublicRequestCard(
                           request: items[i],
-                          onTap: _onCardTap,
+                          onTap: () => _onCardTap(items[i]),
                         ),
                       ),
                     ),

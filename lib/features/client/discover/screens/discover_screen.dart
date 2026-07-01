@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_routes.dart';
@@ -17,6 +18,8 @@ import '../../request_service/screens/request_service_wizard_screen.dart';
 import '../../../auth/screens/account_prompt_screen.dart';
 import '../../orders/screens/public_requests_screen.dart';
 import '../../explore/screens/providers_list_screen.dart';
+import '../services/discover_social_proof_service.dart';
+import 'social_proof_detail_screen.dart';
 
 /// Pantalla "Descubrir".
 ///
@@ -463,8 +466,17 @@ class _BecomeProviderCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────
 // 4. Testimonios
 // ─────────────────────────────────────────────────────────
-class _TestimonialsSection extends StatelessWidget {
+class _TestimonialsSection extends StatefulWidget {
   const _TestimonialsSection();
+
+  @override
+  State<_TestimonialsSection> createState() => _TestimonialsSectionState();
+}
+
+class _TestimonialsSectionState extends State<_TestimonialsSection> {
+  final DiscoverSocialProofService _service = DiscoverSocialProofService();
+  late final Future<List<SocialProofItem>> _future = _service
+      .getReviewBackedItems(maxItems: 4);
 
   @override
   Widget build(BuildContext context) {
@@ -481,30 +493,182 @@ class _TestimonialsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        SizedBox(
-          height: 430,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            clipBehavior: Clip.none,
-            itemCount: _testimonials.length,
-            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
-            itemBuilder: (context, index) =>
-                _TestimonialCard(data: _testimonials[index]),
-          ),
+        FutureBuilder<List<SocialProofItem>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const _TestimonialsLoading();
+            }
+
+            final items = snapshot.data ?? const <SocialProofItem>[];
+            if (items.isEmpty) return const _TestimonialsEmptyState();
+
+            return SizedBox(
+              height: 430,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                clipBehavior: Clip.none,
+                itemCount: items.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.md),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return _TestimonialCard(
+                    data: item,
+                    onOpenDetail: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => SocialProofDetailScreen(item: item),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-class _TestimonialCard extends StatelessWidget {
-  const _TestimonialCard({required this.data});
-
-  final _TestimonialData data;
+class _TestimonialsLoading extends StatelessWidget {
+  const _TestimonialsLoading();
 
   @override
   Widget build(BuildContext context) {
+    return SizedBox(
+      height: 430,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        clipBehavior: Clip.none,
+        itemCount: 2,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
+        itemBuilder: (_, _) => Container(
+          width: 300,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
+            border: Border.all(color: AppColors.neutral200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 86,
+                    height: 86,
+                    decoration: BoxDecoration(
+                      color: AppColors.neutral100,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        _SkeletonLine(width: 120, height: 18),
+                        SizedBox(height: AppSpacing.xs),
+                        _SkeletonLine(width: 90, height: 12),
+                        SizedBox(height: AppSpacing.xs),
+                        _SkeletonLine(width: 140, height: 12),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const _SkeletonLine(width: 180, height: 18),
+              const SizedBox(height: AppSpacing.sm),
+              const _SkeletonLine(width: double.infinity, height: 12),
+              const SizedBox(height: AppSpacing.xs),
+              const _SkeletonLine(width: 230, height: 12),
+              const Spacer(),
+              const _SkeletonLine(width: double.infinity, height: 42),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TestimonialsEmptyState extends StatelessWidget {
+  const _TestimonialsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXxl),
+        border: Border.all(color: AppColors.neutral200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.rate_review_outlined,
+            color: AppColors.neutral500,
+            size: 34,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Aún no hay testimonios reales',
+            style: AppTypography.titleLarge.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Las reseñas aparecerán aquí cuando los clientes califiquen servicios completados.',
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.neutral600,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.neutral100,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+    );
+  }
+}
+
+class _TestimonialCard extends StatelessWidget {
+  const _TestimonialCard({required this.data, required this.onOpenDetail});
+
+  final SocialProofItem data;
+  final VoidCallback onOpenDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarUrl = data.provider.avatarUrl;
+    final ratingText = _formatRating(data.rating);
+
     return Container(
       width: 300,
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -522,16 +686,31 @@ class _TestimonialCard extends StatelessWidget {
               // Avatar (placeholder hasta tener las fotos reales).
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                child: Container(
+                child: SizedBox(
                   width: 86,
                   height: 86,
-                  color: AppColors.neutral100,
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: AppColors.neutral400,
-                    size: 40,
-                  ),
+                  child: avatarUrl != null && avatarUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: avatarUrl,
+                          memCacheWidth: 220,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) => const ColoredBox(
+                            color: AppColors.neutral100,
+                            child: Icon(
+                              Icons.person_rounded,
+                              color: AppColors.neutral400,
+                              size: 40,
+                            ),
+                          ),
+                        )
+                      : const ColoredBox(
+                          color: AppColors.neutral100,
+                          child: Icon(
+                            Icons.person_rounded,
+                            color: AppColors.neutral400,
+                            size: 40,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -540,7 +719,7 @@ class _TestimonialCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data.name,
+                      data.providerName,
                       style: AppTypography.headingMedium.copyWith(
                         color: const Color(0xFF162033),
                         fontWeight: FontWeight.w800,
@@ -557,15 +736,17 @@ class _TestimonialCard extends StatelessWidget {
                       children: [
                         ...List.generate(
                           5,
-                          (_) => const Icon(
+                          (index) => Icon(
                             Icons.star_rounded,
-                            color: AppColors.starFilled,
+                            color: index < data.review.rating
+                                ? AppColors.starFilled
+                                : AppColors.neutral300,
                             size: 16,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${data.rating} (${data.reviews} valoraciones)',
+                          '$ratingText (${data.reviewCount} valoraciones)',
                           style: AppTypography.bodySmall.copyWith(
                             color: const Color(0xFF5F6678),
                           ),
@@ -579,7 +760,7 @@ class _TestimonialCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            data.profession,
+            data.categoryName,
             style: AppTypography.titleLarge.copyWith(
               color: const Color(0xFF162033),
               fontWeight: FontWeight.w700,
@@ -604,7 +785,7 @@ class _TestimonialCard extends StatelessWidget {
               ),
             ),
             child: Text(
-              data.quote,
+              '"${data.quote}" - ${data.clientName}',
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.bodyMedium.copyWith(
@@ -616,9 +797,7 @@ class _TestimonialCard extends StatelessWidget {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () {
-              // TODO: abrir el perfil del prestador.
-            },
+            onTap: onOpenDetail,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -628,7 +807,7 @@ class _TestimonialCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               ),
               child: Text(
-                'Ver perfil  →',
+                'Ver caso  →',
                 style: AppTypography.buttonMedium.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,
@@ -642,56 +821,12 @@ class _TestimonialCard extends StatelessWidget {
   }
 }
 
-class _TestimonialData {
-  const _TestimonialData({
-    required this.name,
-    required this.location,
-    required this.rating,
-    required this.reviews,
-    required this.profession,
-    required this.description,
-    required this.quote,
-  });
-
-  final String name;
-  final String location;
-  final String rating;
-  final int reviews;
-  final String profession;
-  final String description;
-  final String quote;
+String _formatRating(num rating) {
+  final value = rating.toDouble();
+  return value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
 }
-
-const _testimonials = [
-  _TestimonialData(
-    name: 'Rubén',
-    location: 'Mariano Roque Alonso',
-    rating: '5',
-    reviews: 3,
-    profession: 'Contratista y Albañil',
-    description:
-        'Rubén con más de 20 años de experiencia en el rubro de la '
-        'construcción y albañilería, se sumó a Toke+ para brindar y '
-        'expandir aún más su alcance.',
-    quote:
-        'La posibilidad de ofrecer mis servicios y la oportunidad de acceder '
-        'a más oportunidades de trabajo es algo que me tiene muy contento.',
-  ),
-  _TestimonialData(
-    name: 'Leonardo',
-    location: 'Lambaré',
-    rating: '5',
-    reviews: 24,
-    profession: 'Electricista, Plomero y más...',
-    description:
-        'Leonardo dispuesto a servir en todo lo que esté a su alcance, con '
-        'diversas habilidades que hacen su destaque. Su compromiso con la '
-        'excelencia y trato con las personas es algo que se aplaude.',
-    quote:
-        'Gracias a Toke+ por confiar en mí. Estoy para servir y lo hago con '
-        'excelencia y calidad. Para mí es importante siempre dar el 100%.',
-  ),
-];
 
 // ─────────────────────────────────────────────────────────
 // 5. Publicá tu pedido en segundos

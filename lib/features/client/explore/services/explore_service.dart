@@ -145,6 +145,13 @@ class PublicRequest {
     required this.status,
     required this.categoryName,
     required this.categoryEmoji,
+    this.imageUrls = const <String>[],
+    this.budgetMin,
+    this.budgetMax,
+    this.preferredDate,
+    this.completedAt,
+    this.orderNumber,
+    this.needsInvoice,
     this.districtName,
     this.clientFirstName,
     this.applicationsCount = 0,
@@ -157,6 +164,13 @@ class PublicRequest {
   final String status;
   final String categoryName;
   final String categoryEmoji;
+  final List<String> imageUrls;
+  final num? budgetMin;
+  final num? budgetMax;
+  final DateTime? preferredDate;
+  final DateTime? completedAt;
+  final int? orderNumber;
+  final bool? needsInvoice;
   final String? districtName;
   final String? clientFirstName;
   final int applicationsCount;
@@ -165,20 +179,38 @@ class PublicRequest {
   /// Código corto para mostrar como "#XXXX" (los pedidos usan uuid).
   String get shortCode => id.replaceAll('-', '').substring(0, 4).toUpperCase();
 
-  factory PublicRequest.fromJson(Map<String, dynamic> j) => PublicRequest(
-    id: j['id'] as String,
-    title: j['title'] as String? ?? '',
-    description: j['description'] as String? ?? '',
-    status: j['status'] as String? ?? 'open',
-    categoryName: j['category_name'] as String? ?? '',
-    categoryEmoji: j['category_emoji'] as String? ?? '',
-    districtName: j['district_name'] as String?,
-    clientFirstName: j['client_first_name'] as String?,
-    applicationsCount: (j['applications_count'] as num?)?.toInt() ?? 0,
-    createdAt: j['created_at'] != null
-        ? DateTime.tryParse(j['created_at'] as String)
-        : null,
-  );
+  factory PublicRequest.fromJson(Map<String, dynamic> j) {
+    final rawImages = j['image_urls'];
+    final images = rawImages is List
+        ? rawImages.whereType<String>().toList(growable: false)
+        : const <String>[];
+
+    return PublicRequest(
+      id: j['id'] as String,
+      title: j['title'] as String? ?? '',
+      description: j['description'] as String? ?? '',
+      status: j['status'] as String? ?? 'open',
+      categoryName: j['category_name'] as String? ?? '',
+      categoryEmoji: j['category_emoji'] as String? ?? '',
+      imageUrls: images,
+      budgetMin: j['budget_min'] as num?,
+      budgetMax: j['budget_max'] as num?,
+      preferredDate: j['preferred_date'] != null
+          ? DateTime.tryParse(j['preferred_date'] as String)
+          : null,
+      completedAt: j['completed_at'] != null
+          ? DateTime.tryParse(j['completed_at'] as String)
+          : null,
+      orderNumber: (j['order_number'] as num?)?.toInt(),
+      needsInvoice: j['needs_invoice'] as bool?,
+      districtName: j['district_name'] as String?,
+      clientFirstName: j['client_first_name'] as String?,
+      applicationsCount: (j['applications_count'] as num?)?.toInt() ?? 0,
+      createdAt: j['created_at'] != null
+          ? DateTime.tryParse(j['created_at'] as String)
+          : null,
+    );
+  }
 }
 
 /// Datos de la vista de detalle de categoría (prestadores + pedidos) y de la

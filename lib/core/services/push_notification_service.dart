@@ -56,22 +56,21 @@ class PushNotificationService {
     // Configurar canal Android
     await _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_androidChannel);
 
     // Inicializar local notifications
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
     await _localNotifications.initialize(
-      const InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      ),
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
@@ -135,14 +134,11 @@ class PushNotificationService {
       // Upsert: si el token ya existe, actualizar last_used_at
       final response = await _client.post(
         '/api/database/rpc/upsert_device_token',
-        body: {
-          'p_token': token,
-          'p_platform': platform,
-        },
+        body: {'p_token': token, 'p_platform': platform},
         requireAuth: true,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('[Push] Token registrado: ${token.substring(0, 20)}...');
       } else {
         debugPrint('[Push] Error registrando token: ${response.statusCode}');
