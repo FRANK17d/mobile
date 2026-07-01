@@ -7,11 +7,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/navigation/custom_bottom_nav_bar.dart';
 import '../../features/auth/services/auth_service.dart';
 import '../../features/client/home/screens/client_home_screen.dart';
+import '../../features/chat/screens/conversations_screen.dart';
 import '../../features/technician/orders/screens/provider_orders_screen.dart';
 import '../../features/technician/account/screens/provider_account_screen.dart';
 
 /// Shell de navegacion del Prestador de servicio.
-/// 3 tabs: Inicio, Pedidos, Cuenta.
+/// 4 tabs: Inicio, Pedidos, Mensajes, Cuenta.
 /// Si es la primera vez (guía no vista), arranca en Cuenta.
 class TechnicianShell extends StatefulWidget {
   const TechnicianShell({super.key});
@@ -19,7 +20,8 @@ class TechnicianShell extends StatefulWidget {
   /// Índices de tabs del shell del técnico.
   static const int tabHome = 0;
   static const int tabOrders = 1;
-  static const int tabPanel = 2;
+  static const int tabMessages = 2;
+  static const int tabPanel = 3;
 
   /// Permite a otras pantallas (p. ej. el menú hamburguesa) pedir un cambio de
   /// tab sin acoplarse al estado interno del shell.
@@ -43,6 +45,7 @@ class _TechnicianShellState extends State<TechnicianShell> {
   static const _pages = [
     ClientHomeScreen(),
     ProviderOrdersScreen(),
+    ConversationsScreen(),
     ProviderAccountScreen(),
   ];
 
@@ -78,7 +81,7 @@ class _TechnicianShellState extends State<TechnicianShell> {
   Future<void> _checkFirstTime() async {
     final shouldShow = await AppPreferences.shouldShowProviderGuide();
     if (shouldShow && mounted) {
-      setState(() => _selectedIndex = 2);
+      setState(() => _selectedIndex = 3);
     }
   }
 
@@ -92,6 +95,11 @@ class _TechnicianShellState extends State<TechnicianShell> {
       icon: Icons.receipt_long_outlined,
       activeIcon: Icons.receipt_long_rounded,
       label: 'Pedidos',
+    ),
+    const NavBarItem(
+      icon: Icons.chat_bubble_outline_rounded,
+      activeIcon: Icons.chat_bubble_rounded,
+      label: 'Mensajes',
     ),
     NavBarItem(
       icon: Icons.person_outline_rounded,
