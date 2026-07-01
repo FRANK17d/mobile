@@ -44,6 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase config contains Google API keys. Keep it outside git and provide it
+# through CI secrets or local setup.
+/android/app/google-services.json
+
 .claude
 .gitnexus
 CLAUDE.md
