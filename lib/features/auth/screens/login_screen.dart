@@ -418,11 +418,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted || creds == null) return;
 
     setState(() => _isLoggingIn = true);
-    final userId = await AuthService().login(creds.email, creds.password);
+    final result = await AuthService().loginDetailed(
+      creds.email,
+      creds.password,
+    );
     if (!mounted) return;
 
-    if (userId == null) {
+    if (!result.success) {
       setState(() => _isLoggingIn = false);
+      if (result.invalidCredentials) {
+        await BiometricService.instance.disable();
+        if (!mounted) return;
+        showAppToast(
+          context,
+          message: 'El acceso biométrico venció. Ingresá con tu contraseña.',
+          type: ToastType.error,
+        );
+        return;
+      }
+
       showAppToast(
         context,
         message: 'No pudimos iniciar con biometría. Usa tu contraseña.',
@@ -430,7 +444,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       return;
     }
-    await _completeLogin(creds.email, creds.password, fromBiometric: true);
+    await _completeLogin(
+      creds.email,
+      creds.password,
+      userId: result.userId,
+      fromBiometric: true,
+    );
   }
 
   void _showForgotPasswordModal(BuildContext context) {

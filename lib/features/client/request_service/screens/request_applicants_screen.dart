@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/feedback/app_toast.dart';
+import '../../booking/screens/booking_screen.dart';
 import '../services/request_service.dart';
 
 /// Lista los técnicos que postularon a un pedido y permite elegir uno.
@@ -77,10 +78,22 @@ class _RequestApplicantsScreenState extends State<RequestApplicantsScreen> {
     if (ok) {
       showAppToast(
         context,
-        message: 'Elegiste a ${a.firstName}. Coordina por chat y pago directo.',
+        message: 'Elegiste a ${a.firstName}. Agenda la visita.',
         type: ToastType.success,
       );
-      Navigator.of(context).pop(true);
+      // Navigate to booking screen so client can schedule the appointment
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => BookingScreen(
+            requestId: widget.requestId,
+            technicianName: [a.firstName, a.lastName].where((s) => s != null && s.isNotEmpty).join(' '),
+            technicianId: a.technicianId,
+          ),
+        ),
+      );
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } else {
       showAppToast(
         context,

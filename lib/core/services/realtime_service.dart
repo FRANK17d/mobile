@@ -74,9 +74,10 @@ class RealtimeService {
           socket.emit('realtime:subscribe', {'channel': ch});
         }
       });
-      socket.onDisconnect(
-        (reason) => debugPrint('Realtime: desconectado ($reason)'),
-      );
+      socket.onDisconnect((reason) {
+        if (reason == 'io client disconnect') return;
+        debugPrint('Realtime: desconectado ($reason)');
+      });
       // Solo logueamos el primer error del episodio; Socket.IO sigue
       // reintentando en segundo plano sin inundar la consola.
       socket.onConnectError((e) {

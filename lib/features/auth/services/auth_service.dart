@@ -88,6 +88,26 @@ class ClientRegistrationResult {
   });
 }
 
+class LoginResult {
+  final String? userId;
+  final int? statusCode;
+  final String? error;
+  final String? message;
+
+  const LoginResult({this.userId, this.statusCode, this.error, this.message});
+
+  bool get success => userId != null;
+
+  bool get invalidCredentials {
+    final normalizedError = (error ?? '').toUpperCase();
+    final normalizedMessage = (message ?? '').toLowerCase();
+    return statusCode == 401 &&
+        (normalizedError == 'AUTH_UNAUTHORIZED' ||
+            normalizedError.contains('CREDENTIAL') ||
+            normalizedMessage.contains('invalid'));
+  }
+}
+
 class AuthService {
   static const googleOAuthRedirectUri = 'tokeplus://auth/callback';
   static const _googleCodeVerifierKey = 'google_oauth_code_verifier';
@@ -98,6 +118,11 @@ class AuthService {
   /// Logs in a user with email and password
   /// Returns the userId on success, or null on failure.
   Future<String?> login(String email, String password) async {
+    final result = await loginDetailed(email, password);
+    return result.userId;
+  }
+
+  Future<LoginResult> loginDetailed(String email, String password) async {
     try {
       final response = await _client.post(
         '/api/auth/sessions?client_type=mobile',
@@ -114,17 +139,36 @@ class AuthService {
 
         if (accessToken != null && userId != null) {
           await _client.saveTokens(accessToken, refreshToken);
-          return userId;
+          return LoginResult(userId: userId, statusCode: response.statusCode);
         }
-        return null;
-      } else {
-        debugPrint('Login Error: ${response.body}');
-        return null;
+        return LoginResult(statusCode: response.statusCode);
       }
+
+      final errorData = _decodeErrorBody(response.body);
+      final result = LoginResult(
+        statusCode: response.statusCode,
+        error: errorData?['error'] as String?,
+        message: errorData?['message'] as String?,
+      );
+
+      if (!result.invalidCredentials) {
+        debugPrint('Login Error (${response.statusCode}): ${response.body}');
+      }
+
+      return result;
     } catch (e) {
       debugPrint('Exception during login: $e');
-      return null;
+      return const LoginResult(message: 'Error de conexión');
     }
+  }
+
+  Map<String, dynamic>? _decodeErrorBody(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+    return null;
   }
 
   /// Registers a new user. Assigns role "usuario" natively in DB via trigger or manual insert if needed.
