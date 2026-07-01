@@ -293,6 +293,7 @@ class _BiometricConfirmScreenState extends State<_BiometricConfirmScreen> {
     final enabled = await _bio.enable(
       email: widget.email,
       password: _passCtrl.text,
+      userId: userId,
     );
     if (!mounted) return;
     setState(() => _busy = false);

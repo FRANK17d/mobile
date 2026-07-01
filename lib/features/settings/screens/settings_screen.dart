@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/network/insforge_client.dart';
 import '../../../core/services/app_preferences.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/services/theme_service.dart';
@@ -38,10 +39,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final notif = await AppPreferences.isReceivingOrders();
     final bioEnabled = await BiometricService.instance.isEnabled();
     final bioSupported = await BiometricService.instance.isDeviceSupported();
+    final currentUid = await InsForgeClient().getCurrentUserId();
+    final enabledUid = await BiometricService.instance.enabledUserId();
     if (!mounted) return;
     setState(() {
       _notificationsEnabled = notif;
-      _biometricEnabled = bioEnabled;
+      _biometricEnabled =
+          bioEnabled && enabledUid != null && enabledUid == currentUid;
       _biometricSupported = bioSupported;
       _loading = false;
     });
